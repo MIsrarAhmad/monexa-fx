@@ -1,0 +1,25 @@
+meta {
+  name: regestier user
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:5000/api/auth/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Muhammad Abdullah",
+    "email": "abdullsher54@gmail.com",
+    "password": "password123",
+    "referralCode": ""
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

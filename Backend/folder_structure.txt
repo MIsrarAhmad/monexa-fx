@@ -1,0 +1,69 @@
+crypto-platform-backend/
+├── node_modules/
+├── src/
+│   ├── config/             # Configuration files (Database, Binance API, System Constants)
+│   │   ├── db.js           # MongoDB Atlas connection setup
+│   │   ├── binance.js      # Binance Pay API configuration & HMAC helper
+│   │   └── constants.js    # System constants ($300 min balance, tier rates, 20% fee, $50 profit lock)
+│   │
+│   ├── controllers/        # Route logic & request/response handlers
+│   │   ├── authController.js        # User Registration, Referral Code checking, Login
+│   │   ├── walletController.js      # Balance retrieval, Dynamic Top-Up calculator
+│   │   ├── depositController.js     # Binance order initiation & manual deposit fallback
+│   │   ├── webhookController.js     # Binance Pay instant payment notification handler
+│   │   ├── withdrawalController.js  # 24-hr grace check, $50 profit lock check, 20% fee logic
+│   │   ├── referralController.js    # Referral tree list & passive earnings reporting
+│   │   └── adminController.js       # Admin verification queues & manual yield triggers
+│   │
+│   ├── models/             # Database Schemas (Mongoose)
+│   │   ├── User.js         # User profiles, auth hashes, referral link mapping
+│   │   ├── Wallet.js       # Main balance, daily profit ledger, referral earnings wallet
+│   │   ├── Transaction.js  # Complete audit log (Deposits, Yields, Referral Bonuses, Withdrawals)
+│   │   └── Referral.js     # Direct downstream referral links & bonus tracking
+│   │
+│   ├── routes/             # Express API Endpoint definitions
+│   │   ├── authRoutes.js
+│   │   ├── walletRoutes.js
+│   │   ├── depositRoutes.js
+│   │   ├── webhookRoutes.js
+│   │   ├── withdrawalRoutes.js
+│   │   ├── referralRoutes.js
+│   │   └── adminRoutes.js
+│   │
+│   ├── middleware/         # Custom Middlewares
+│   │   ├── authMiddleware.js       # JWT Verification & route protection
+│   │   ├── adminMiddleware.js      # Admin access validation
+│   │   ├── errorHandler.js         # Global API error catcher
+│   │   └── validateRequest.js      # Input validation sanitizers
+│   │
+│   ├── services/           # Heavy Business & Financial Calculations
+│   │   ├── yieldService.js         # Tiered 1% compounding math ($300–$399 base = $3, $400–$499 base = $4)
+│   │   ├── referralService.js      # Instant 50% referral yield & $0.20 daily passive distributor
+│   │   └── binancePayService.js    # Calls Binance `/v2/order` & `/payout` endpoints
+│   │
+│   ├── jobs/               # Background Scheduled Tasks
+│   │   └── yieldCron.js            # Daily midnight Node-Cron execution for daily returns
+│   │
+│   └── utils/              # Helper utilities
+│       ├── generateTokens.js       # JWT signer
+│       ├── generateRefCode.js      # Unique 6-character referral code generator
+│       └── logger.js               # Structured error & audit logger
+│
+├── bruno/                  # Bruno API Testing Collection (Committed to repo)
+│   ├── bruno.json          # Bruno workspace settings
+│   ├── environments/
+│   │   ├── Local.bru       # http://localhost:5000
+│   │   └── Production.bru  # Production server URL
+│   ├── 01_Auth/
+│   │   ├── Register.bru
+│   │   └── Login.bru
+│   ├── 02_Wallet/
+│   ├── 03_Deposits/
+│   ├── 04_Yields/
+│   └── 05_Withdrawals/
+│
+├── .env                    # Environment variables (Mongo URI, JWT Secret, Binance Keys)
+├── .env.example            # Environment template for team members
+├── .gitignore
+├── package.json
+└── server.js               # Application entry point

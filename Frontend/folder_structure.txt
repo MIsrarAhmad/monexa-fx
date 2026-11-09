@@ -1,0 +1,35 @@
+front end
+
+src/
+├── api/
+│   ├── axiosInstance.js        # Centralized Axios with Bearer Interceptors & 401 handling
+│   └── socket.js               # Socket.io connection manager
+├── assets/                     # Images, background watermarks, logos
+├── components/
+│   ├── common/
+│   │   ├── ErrorBoundary.jsx   # Global Error Boundary fallback component
+│   │   ├── MaintenanceOverlay.jsx # Full-screen Maintenance Mode overlay
+│   │   ├── StatCard.jsx        # Reusable Memoized Neon Metric Cards
+│   │   └── Toast.jsx           # AnimatePresence Floating Notification Toast
+│   ├── layout/
+│   │   ├── Navbar.jsx          # Top Sticky Header with Profile & Mobile Toggle
+│   │   ├── Sidebar.jsx         # Left Collapsible Floating Navigation
+│   │   ├── BottomNav.jsx       # Mobile Fixed Bottom Action Bar
+│   │   └── ProtectedRoute.jsx  # Role-Based Route & Maintenance Guard
+│   ├── dashboard/
+│   │   ├── GrowthChart.jsx     # Memoized Performance Chart
+│   │   ├── ProjectCard.jsx     # Managed Pool Cards
+│   │   └── LedgerTable.jsx     # Real-time Audit Log Table
+│   └── modals/
+│       ├── DepositModal.jsx    # Dynamic Top-up & Binance Pay / TxID Modal
+│       └── WithdrawModal.jsx   # 20% Fee Preview & Cashout Modal
+├── pages/
+│   ├── Login.jsx               # Authentication Login Screen
+│   ├── Register.jsx            # Auto-referral Signup Screen
+│   ├── UserDashboard.jsx       # Client Portal View
+│   └── AdminDashboard.jsx      # Admin Control Center (Deposit & Cashout Queues)
+├── store/
+│   ├── useAuthStore.js         # Zustand Store for Auth, JWT, and User Role
+│   └── useSystemStore.js       # Zustand Store for Feature Flags & Maintenance Mode
+├── App.jsx                     # TanStack Query Provider & React Router Config
+└── main.jsx                    # Root Application Entry Point
