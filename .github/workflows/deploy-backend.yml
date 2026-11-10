@@ -1,0 +1,113 @@
+name: Deploy backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Backend/**"
+      - "!Backend/deploy/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix Backend
+
+      - name: Check backend JavaScript syntax
+        run: find Backend -path Backend/node_modules -prune -o -name "*.js" -type f -print0 | xargs -0 -n1 node --check
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          : "${VPS_HOST:?VPS_HOST secret is required}"
+          : "${VPS_KNOWN_HOSTS:?VPS_KNOWN_HOSTS secret is required}"
+          : "${VPS_SSH_KEY:?VPS_SSH_KEY secret is required}"
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+          ssh-keygen -F "$VPS_HOST" -f "$HOME/.ssh/known_hosts" >/dev/null
+
+      - name: Upload backend release
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          port="${VPS_PORT:-22}"
+          release="/var/www/monexafx/backend-deploy/releases/${GITHUB_SHA}-${GITHUB_RUN_ID}"
+          ssh_args=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -p "$port")
+          ssh "${ssh_args[@]}" "$VPS_USER@$VPS_HOST" "mkdir -p '$release'"
+          tar -C Backend --exclude=node_modules --exclude=.env --exclude=.git -czf - . \
+            | ssh "${ssh_args[@]}" "$VPS_USER@$VPS_HOST" "tar -xzf - -C '$release'"
+          ssh "${ssh_args[@]}" "$VPS_USER@$VPS_HOST" \
+            "cd '$release' && npm ci --omit=dev --no-audit --no-fund && ln -sfnT /etc/monexa-fx/backend.env .env && chmod -R g+rX,o-rwx ."
+
+      - name: Switch backend and verify health
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          port="${VPS_PORT:-22}"
+          release="/var/www/monexafx/backend-deploy/releases/${GITHUB_SHA}-${GITHUB_RUN_ID}"
+          ssh_args=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -p "$port")
+          ssh "${ssh_args[@]}" "$VPS_USER@$VPS_HOST" "bash -s -- '$release'" <<'REMOTE'
+          set -euo pipefail
+          release="$1"
+          current="/var/www/monexafx/backend-deploy/current"
+          case "$release" in
+            /var/www/monexafx/backend-deploy/releases/*) ;;
+            *) echo "Refusing unexpected release path"; exit 1 ;;
+          esac
+          test -f "$release/server.js"
+          previous="$(readlink "$current")"
+          ln -sfnT "$release" "$current"
+          rollback() {
+            ln -sfnT "$previous" "$current"
+            sudo -n /usr/bin/systemctl restart monexa-backend.service || true
+          }
+          if ! sudo -n /usr/bin/systemctl restart monexa-backend.service; then
+            rollback
+            echo "Backend restart failed; the previous release was restored."
+            exit 1
+          fi
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:5000/ >/dev/null; then
+              sudo -n /usr/bin/systemctl is-active monexa-backend.service
+              echo "Backend health check passed."
+              exit 0
+            fi
+            sleep 2
+          done
+          rollback
+          echo "Backend health check failed; the previous release was restored."
+          exit 1
+          REMOTE
