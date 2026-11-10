@@ -9,6 +9,7 @@ import {
   processDepositAction,
   getMaintenanceStatus,
   toggleMaintenanceStatus,
+  permanentlyDeleteUser,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get('/maintenance', getMaintenanceStatus);
 // Protected Admin routes
 router.use(protect, adminOnly);
 router.get('/stats', getAdminStats);
+router.delete('/users/:userId', permanentlyDeleteUser);
 router.get('/withdrawals/pending', getPendingWithdrawals);
 router.put('/withdrawals/:id/action', processWithdrawalAction);
 

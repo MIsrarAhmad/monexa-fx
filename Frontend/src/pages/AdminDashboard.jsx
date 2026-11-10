@@ -23,6 +23,7 @@ import {
   ExternalLink,
   DollarSign,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
@@ -56,6 +57,8 @@ const AdminDashboard = () => {
   // User Directory Search & Filter States
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('ALL');
+  const [selectedDeleteUser, setSelectedDeleteUser] = useState(null);
+  const [deleteConfirmationEmail, setDeleteConfirmationEmail] = useState('');
 
   // Admin Profile Form States
   const [adminName, setAdminName] = useState(user?.name || '');
@@ -159,6 +162,25 @@ const AdminDashboard = () => {
     },
     onError: (err) => {
       showToast(err.response?.data?.error || 'Failed to record KYC decision');
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async ({ userId, confirmEmail }) => {
+      const res = await axiosInstance.delete(`/admin/users/${userId}`, { data: { confirmEmail } });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingDeposits'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWithdrawals'] });
+      queryClient.invalidateQueries({ queryKey: ['adminPendingKycs'] });
+      showToast(data.message || 'User account and linked data permanently deleted.');
+      setSelectedDeleteUser(null);
+      setDeleteConfirmationEmail('');
+    },
+    onError: (err) => {
+      showToast(err.response?.data?.error || 'Failed to permanently delete the user.');
     },
   });
 
@@ -695,18 +717,19 @@ const AdminDashboard = () => {
                       <th className="py-3 px-3">Total Withdrawable</th>
                       <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3 text-right">Deficit Below $300</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
                     {loadingStats ? (
                       <tr>
-                        <td colSpan={5} className="py-4 text-center text-slate-500">
+                        <td colSpan={6} className="py-4 text-center text-slate-500">
                           Loading user directory...
                         </td>
                       </tr>
                     ) : filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-4 text-center text-slate-500">
+                        <td colSpan={6} className="py-4 text-center text-slate-500">
                           No users matched your search or filter criteria.
                         </td>
                       </tr>
@@ -742,6 +765,20 @@ const AdminDashboard = () => {
                             ) : (
                               <span className="text-emerald-400">Threshold Met</span>
                             )}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDeleteUser(u);
+                                setDeleteConfirmationEmail('');
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-900/70 bg-rose-950/40 text-rose-300 hover:bg-rose-900/70 transition"
+                              aria-label={`Permanently delete ${u.email}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -892,6 +929,60 @@ const AdminDashboard = () => {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs"
               >
                 Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedDeleteUser && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-[#0a101d] border border-rose-900/70 rounded-2xl p-6 max-w-lg w-full space-y-4">
+            <h4 className="text-base font-bold text-white flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-rose-400" /> Permanently delete account?
+            </h4>
+            <p className="text-sm font-semibold text-rose-300 break-all">{selectedDeleteUser.email}</p>
+            <p className="text-xs text-slate-300">
+              This irreversible action removes the user, wallet and balances, transaction history, referral records, KYC details, and stored KYC/deposit-proof images. It cannot be undone.
+            </p>
+            <label className="block text-xs text-slate-400" htmlFor="delete-user-confirmation">
+              Type the email address above to confirm:
+            </label>
+            <input
+              id="delete-user-confirmation"
+              type="email"
+              autoComplete="off"
+              value={deleteConfirmationEmail}
+              onChange={(event) => setDeleteConfirmationEmail(event.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-rose-500 focus:outline-none"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDeleteUser(null);
+                  setDeleteConfirmationEmail('');
+                }}
+                disabled={deleteUserMutation.isPending}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:text-white text-xs font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  deleteUserMutation.mutate({
+                    userId: selectedDeleteUser.userId,
+                    confirmEmail: deleteConfirmationEmail,
+                  })
+                }
+                disabled={
+                  deleteUserMutation.isPending ||
+                  deleteConfirmationEmail.trim().toLowerCase() !== selectedDeleteUser.email.toLowerCase()
+                }
+                className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteUserMutation.isPending ? 'Deleting...' : 'Permanently Delete'}
               </button>
             </div>
           </div>

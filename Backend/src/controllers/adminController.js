@@ -1,17 +1,86 @@
 // src/controllers/adminController.js
+import mongoose from 'mongoose';
+import { v2 as cloudinary } from 'cloudinary';
 import Transaction from '../models/Transaction.js';
 import Wallet from '../models/Wallet.js';
+import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+
+const getCloudinaryPublicId = (assetUrl, expectedFolder) => {
+  let url;
+  try {
+    url = new URL(assetUrl);
+  } catch {
+    throw new Error('A stored user media URL is invalid; account deletion was stopped.');
+  }
+
+  if (url.hostname !== 'cloudinary.com' && !url.hostname.endsWith('.cloudinary.com')) {
+    throw new Error('A stored user media URL is not a Cloudinary URL; account deletion was stopped.');
+  }
+
+  const uploadPath = url.pathname.split('/upload/')[1];
+  if (!uploadPath) {
+    throw new Error('A stored user media URL could not be resolved; account deletion was stopped.');
+  }
+
+  const pathSegments = uploadPath.split('/').filter(Boolean);
+  const versionIndex = pathSegments.findIndex((segment) => /^v\d+$/.test(segment));
+  const assetPath = (versionIndex >= 0 ? pathSegments.slice(versionIndex + 1) : pathSegments).join('/');
+  const publicId = assetPath.replace(/\.[^/.]+$/, '');
+
+  if (!publicId.startsWith(`${expectedFolder}/`)) {
+    throw new Error('A stored user media asset is outside the expected folder; account deletion was stopped.');
+  }
+
+  return publicId;
+};
+
+const deleteCloudinaryAssets = async (assetUrls) => {
+  const uniqueUrls = [...new Set(assetUrls.filter(Boolean))];
+  if (uniqueUrls.length === 0) return;
+
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary is not configured; account deletion was stopped before removing user records.');
+  }
+
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
+  });
+
+  const assets = uniqueUrls.map((url) => {
+    const expectedFolder = url.includes('/monexafx_kyc_documents/')
+      ? 'monexafx_kyc_documents'
+      : 'monexafx_deposit_proofs';
+    return {
+      publicId: getCloudinaryPublicId(url, expectedFolder),
+      expectedFolder,
+    };
+  });
+
+  for (const { publicId } of assets) {
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image', invalidate: true });
+    if (!['ok', 'not found'].includes(result.result)) {
+      throw new Error(`Could not remove a stored user image (${result.result || 'unknown result'}); account records were not deleted.`);
+    }
+  }
+};
 
 // @desc    Get system-wide financial overview & pending request counts
 // @route   GET /api/admin/stats
 // @access  Private/Admin
 export const getAdminStats = async (req, res, next) => {
   try {
-    const totalUsers = await User.countDocuments({ role: 'user' });
-    const wallets = await Wallet.find({}).populate('user', 'name email createdAt role');
+    const users = await User.find({ role: 'user' }).select('_id name email');
+    const totalUsers = users.length;
+    const wallets = await Wallet.find({});
+    const walletsByUserId = new Map(
+      wallets.filter((wallet) => wallet.user).map((wallet) => [wallet.user.toString(), wallet])
+    );
 
     const totalLiquidity = wallets.reduce((acc, w) => acc + (w.mainBalance || 0), 0);
     const totalProfitBalances = wallets.reduce((acc, w) => acc + (w.profitBalance || 0), 0);
@@ -33,10 +102,9 @@ export const getAdminStats = async (req, res, next) => {
 
     const userInvestmentDetails = [];
 
-    for (const w of wallets) {
-      if (!w.user || w.user.role === 'admin') continue;
-
-      const mainBal = w.mainBalance || 0;
+    for (const user of users) {
+      const wallet = walletsByUserId.get(user._id.toString());
+      const mainBal = wallet?.mainBalance || 0;
       let status = 'UNINVESTED';
       let remainingToMinThreshold = MINIMUM_INITIAL_DEPOSIT;
 
@@ -53,11 +121,11 @@ export const getAdminStats = async (req, res, next) => {
       }
 
       userInvestmentDetails.push({
-        userId: w.user._id,
-        name: w.user.name,
-        email: w.user.email,
+        userId: user._id,
+        name: user.name,
+        email: user.email,
         mainBalance: mainBal,
-        totalWithdrawable: mainBal + (w.profitBalance || 0) + (w.referralBalance || 0),
+        totalWithdrawable: mainBal + (wallet?.profitBalance || 0) + (wallet?.referralBalance || 0),
         status,
         remainingToMinThreshold,
       });
@@ -91,6 +159,81 @@ export const getAdminStats = async (req, res, next) => {
         },
         userInvestmentDetails,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Permanently delete a user and their linked account data
+// @route   DELETE /api/admin/users/:userId
+// @access  Private/Admin
+export const permanentlyDeleteUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { confirmEmail } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'user') {
+      return res.status(404).json({ success: false, error: 'Regular user account not found.' });
+    }
+
+    if (user._id.equals(req.user._id)) {
+      return res.status(400).json({ success: false, error: 'You cannot delete your own administrator account.' });
+    }
+
+    if (typeof confirmEmail !== 'string' || confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({ success: false, error: 'The confirmation email does not match the user account.' });
+    }
+
+    const transactions = await Transaction.find({ user: user._id }).select('paymentProofUrl');
+    const assetUrls = [
+      user.kycDetails?.idFrontUrl,
+      user.kycDetails?.idBackUrl,
+      user.kycDetails?.selfieUrl,
+      ...transactions.map((transaction) => transaction.paymentProofUrl),
+    ];
+
+    await deleteCloudinaryAssets(assetUrls);
+
+    const session = await mongoose.startSession();
+    let deletedCounts;
+    try {
+      await session.withTransaction(async () => {
+        await User.updateMany({ referredBy: user._id }, { $set: { referredBy: null } }, { session });
+        const referrals = await Referral.deleteMany(
+          { $or: [{ referrer: user._id }, { referredUser: user._id }] },
+          { session }
+        );
+        const wallet = await Wallet.deleteOne({ user: user._id }, { session });
+        const transactionRecords = await Transaction.deleteMany({ user: user._id }, { session });
+        const deletedUser = await User.deleteOne(
+          { _id: user._id, email: user.email, role: 'user' },
+          { session }
+        );
+
+        if (deletedUser.deletedCount !== 1) {
+          throw new Error('The user account could not be deleted; no database records were removed.');
+        }
+
+        deletedCounts = {
+          wallets: wallet.deletedCount,
+          referrals: referrals.deletedCount,
+          transactions: transactionRecords.deletedCount,
+        };
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.email} and linked account records were permanently deleted.`,
+      data: deletedCounts,
     });
   } catch (error) {
     next(error);
