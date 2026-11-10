@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, ShieldAlert } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import LOGO_IMAGE_PATH from '../assets/logo.jpeg';
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS, isValidPassword } from '../utils/passwordPolicy';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -23,6 +24,10 @@ const ResetPassword = () => {
     event.preventDefault();
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+    if (!isValidPassword(password)) {
+      setError(PASSWORD_REQUIREMENTS);
       return;
     }
 
@@ -53,7 +58,7 @@ const ResetPassword = () => {
               Choose a <span className="text-cyan-400">New Password</span>
             </h1>
           </Link>
-          <p className="text-xs text-slate-400 mt-2">Use at least 6 characters for your new password.</p>
+          <p className="text-xs text-slate-400 mt-2">{PASSWORD_REQUIREMENTS}</p>
         </div>
 
         {(error || !token) && (
@@ -75,11 +80,13 @@ const ResetPassword = () => {
                   id="new-password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
+                  pattern={PASSWORD_PATTERN.source}
+                  title={PASSWORD_REQUIREMENTS}
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="Enter a strong password"
                   className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 transition"
                 />
                 <button
@@ -103,7 +110,9 @@ const ResetPassword = () => {
                   id="confirm-password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
+                  pattern={PASSWORD_PATTERN.source}
+                  title={PASSWORD_REQUIREMENTS}
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}

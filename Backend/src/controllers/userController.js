@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import { isValidPassword, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy.js';
 
 // @desc    Update user profile (Name, Email)
 // @route   PUT /api/user/profile
@@ -55,10 +56,10 @@ export const changePassword = async (req, res, next) => {
       });
     }
 
-    if (newPassword.length < 6) {
+    if (!isValidPassword(newPassword)) {
       return res.status(400).json({
         success: false,
-        error: 'New password must be at least 6 characters long',
+        error: PASSWORD_REQUIREMENTS,
       });
     }
 

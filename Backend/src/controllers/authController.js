@@ -8,6 +8,7 @@ import generateToken from '../utils/generateTokens.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { sendEmail } from '../services/emailService.js';
 import { passwordResetEmailTemplate, welcomeEmailTemplate } from '../utils/emailTemplates.js';
+import { isValidPassword, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy.js';
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -20,6 +21,12 @@ export const registerUser = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         error: 'Please provide name, email, and password',
+      });
+    }
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        success: false,
+        error: PASSWORD_REQUIREMENTS,
       });
     }
 
@@ -243,10 +250,16 @@ export const requestPasswordReset = async (req, res, next) => {
 export const resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
-    if (typeof token !== 'string' || !token || typeof password !== 'string' || password.length < 6) {
+    if (typeof token !== 'string' || !token) {
       return res.status(400).json({
         success: false,
-        error: 'A valid reset link and a password of at least 6 characters are required',
+        error: 'A valid password reset link is required',
+      });
+    }
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        success: false,
+        error: PASSWORD_REQUIREMENTS,
       });
     }
 

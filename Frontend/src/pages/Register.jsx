@@ -1,10 +1,11 @@
 // src/pages/Register.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, User, Users, Eye, EyeOff, ArrowRight, ShieldAlert } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
 import LOGO_IMAGE_PATH from '../assets/logo.jpeg';
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -125,14 +126,16 @@ const Register = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Password (Min. 6 chars)</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 required
-                minLength={6}
+                minLength={PASSWORD_MIN_LENGTH}
+                pattern={PASSWORD_PATTERN.source}
+                title={PASSWORD_REQUIREMENTS}
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
@@ -146,6 +149,7 @@ const Register = () => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-[11px] text-slate-400 mt-1">{PASSWORD_REQUIREMENTS}</p>
           </div>
 
           <div>

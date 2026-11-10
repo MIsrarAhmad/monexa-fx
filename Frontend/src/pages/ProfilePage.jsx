@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Key, Save, CheckCircle } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
@@ -7,6 +7,7 @@ import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
 import Toast from '../components/common/Toast';
+import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const ProfilePage = () => {
   const user = useAuthStore((state) => state.user);
@@ -173,15 +174,17 @@ const ProfilePage = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    minLength={6}
-                    placeholder="Enter new password (min 6 characters)"
+                    minLength={PASSWORD_MIN_LENGTH}
+                    pattern={PASSWORD_PATTERN.source}
+                    title={PASSWORD_REQUIREMENTS}
+                    placeholder="Enter a strong password"
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Passwords must be at least 6 characters.</span>
+                  <span>{PASSWORD_REQUIREMENTS}</span>
                 </div>
 
                 <button
