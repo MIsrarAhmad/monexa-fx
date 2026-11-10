@@ -21,6 +21,8 @@ import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
 import Toast from '../components/common/Toast';
 
+const FRONTEND_URL = 'https://monexafx.com';
+
 const ReferralsPage = () => {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
@@ -51,7 +53,7 @@ const ReferralsPage = () => {
   };
 
   const handleCopyReferral = () => {
-    const link = `https://tradeyield.io/register?ref=${referralData?.referralCode || user?.referralCode || ''}`;
+    const link = `${FRONTEND_URL}/register?ref=${referralData?.referralCode || user?.referralCode || ''}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     showToast('Referral invitation link copied to clipboard!');
@@ -107,7 +109,7 @@ const ReferralsPage = () => {
                 <input
                   type="text"
                   readOnly
-                  value={`https://tradeyield.io/register?ref=${referralData?.referralCode || user?.referralCode || ''}`}
+                  value={`${FRONTEND_URL}/register?ref=${referralData?.referralCode || user?.referralCode || ''}`}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-cyan-300 font-mono focus:outline-none"
                 />
                 <button

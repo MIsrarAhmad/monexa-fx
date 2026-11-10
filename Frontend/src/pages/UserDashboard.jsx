@@ -33,6 +33,8 @@ import GrowthChart from '../components/dashboard/GrowthChart';
 import DepositModal from '../components/modals/DepositModal';
 import WithdrawModal from '../components/modals/WithdrawModal';
 
+const FRONTEND_URL = 'https://monexafx.com';
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const UserDashboard = () => {
@@ -93,7 +95,7 @@ const UserDashboard = () => {
   }, []);
 
   const handleCopyReferral = () => {
-    const link = `https://tradeyield.io/register?ref=${referralData?.referralCode || user?.referralCode || ''}`;
+    const link = `${FRONTEND_URL}/register?ref=${referralData?.referralCode || user?.referralCode || ''}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     showToast('Referral invitation link copied to clipboard!');
@@ -238,7 +240,7 @@ const UserDashboard = () => {
                     <input
                       type="text"
                       readOnly
-                      value={`https://tradeyield.io/register?ref=${referralData?.referralCode || user?.referralCode || ''}`}
+                      value={`${FRONTEND_URL}/register?ref=${referralData?.referralCode || user?.referralCode || ''}`}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono focus:outline-none"
                     />
                     <button onClick={handleCopyReferral} className="btn-neon-primary px-4 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1">
