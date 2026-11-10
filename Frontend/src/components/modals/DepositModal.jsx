@@ -18,17 +18,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
   const [showQr, setShowQr] = useState(false);
   const [error, setError] = useState('');
 
-  // 1. Fetch current user & KYC status
-  const { data: meData, isLoading: loadingUser } = useQuery({
-    queryKey: ['me-deposit-modal'],
-    queryFn: async () => {
-      const res = await axiosInstance.get('/auth/me');
-      return res.data.data;
-    },
-    enabled: isOpen,
-  });
-
-  // 2. Fetch KYC details
+  // Fetch KYC details
   const { data: kycData } = useQuery({
     queryKey: ['kyc-status-modal'],
     queryFn: async () => {
@@ -38,16 +28,8 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
     enabled: isOpen,
   });
 
-  const currentBalance = meData?.wallet?.mainBalance || 0;
   const isKycApproved = kycData?.kycStatus === 'APPROVED';
-
-  // Compute dynamic minimum deposit required
-  let minRequired = 300;
-  if (currentBalance > 0 && currentBalance < 300) {
-    minRequired = 300 - currentBalance;
-  } else if (currentBalance >= 300) {
-    minRequired = 1;
-  }
+  const minRequired = 300;
 
   // Deposit Submit Mutation
   const depositMutation = useMutation({
@@ -112,7 +94,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
 
     const depositAmount = parseFloat(amount);
     if (!depositAmount || depositAmount < minRequired) {
-      setError(`Minimum required deposit for your account is $${minRequired} USDT.`);
+      setError(`The minimum deposit is $${minRequired} USDT.`);
       return;
     }
 
@@ -165,17 +147,10 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
           </div>
         ) : (
           <>
-            {/* Dynamic Minimum Indicator */}
-            {loadingUser ? (
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 text-center mb-4">
-                Checking wallet balance...
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-800 text-xs mb-4 flex justify-between items-center">
-                <span className="text-slate-300">Minimum Required Deposit:</span>
-                <span className="font-extrabold text-cyan-400 text-sm">${minRequired}.00 USDT</span>
-              </div>
-            )}
+            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-800 text-xs mb-4 flex justify-between items-center">
+              <span className="text-slate-300">Minimum per deposit:</span>
+              <span className="font-extrabold text-cyan-400 text-sm">${minRequired}.00 USDT</span>
+            </div>
 
             {/* Error Alert */}
             {error && (

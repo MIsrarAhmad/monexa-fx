@@ -1,18 +1,7 @@
 // src/controllers/depositController.js
-import Wallet from '../models/Wallet.js';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
 import { MINIMUM_INITIAL_DEPOSIT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
-
-// Helper function to calculate required minimum top-up
-const getMinRequiredDeposit = (currentBalance) => {
-  if (currentBalance > 0 && currentBalance < MINIMUM_INITIAL_DEPOSIT) {
-    return MINIMUM_INITIAL_DEPOSIT - currentBalance;
-  } else if (currentBalance >= MINIMUM_INITIAL_DEPOSIT) {
-    return 1;
-  }
-  return MINIMUM_INITIAL_DEPOSIT;
-};
 
 // @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
@@ -71,14 +60,10 @@ export const submitManualDeposit = async (req, res, next) => {
       });
     }
 
-    const wallet = await Wallet.findOne({ user: req.user._id });
-    const currentBalance = wallet ? wallet.mainBalance : 0;
-    const minRequired = getMinRequiredDeposit(currentBalance);
-
-    if (depositAmount < minRequired) {
+    if (depositAmount < MINIMUM_INITIAL_DEPOSIT) {
       return res.status(400).json({
         success: false,
-        error: `Amount below required minimum. Minimum deposit allowed for your account is $${minRequired} USDT.`,
+        error: `Amount below required minimum. Every deposit must be at least $${MINIMUM_INITIAL_DEPOSIT} USDT.`,
       });
     }
 
