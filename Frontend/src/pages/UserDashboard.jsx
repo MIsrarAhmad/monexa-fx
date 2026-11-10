@@ -157,7 +157,7 @@ const UserDashboard = () => {
                   <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">Managed Capital Account</span>
                 </div>
                 <h1 className="text-2xl md:text-3xl font-extrabold text-white">Welcome, {user?.name || 'Investor'}</h1>
-                <p className="text-xs md:text-sm text-slate-400 mt-1">Real-time off-chain investment ledger & Binance yield portal.</p>
+                <p className="text-xs md:text-sm text-slate-400 mt-1">Track your investment, earnings, and available balance in one place.</p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
@@ -211,7 +211,7 @@ const UserDashboard = () => {
               value={`$${totalWithdrawable.toFixed(2)}`}
               unit="USDT"
               icon={Wallet}
-              subText="Binance Cashout"
+              subText="Available to Withdraw"
               badgeText="Ready"
               highlight
             />
