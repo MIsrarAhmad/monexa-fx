@@ -76,7 +76,7 @@ const Register = () => {
               />
             </div>
             <h1 className="text-2xl font-extrabold text-white tracking-wide">
-              Join Monexafx <span className="text-cyan-400">Exchange</span>
+              Join MonexaFx
             </h1>
           </Link>
           <p className="text-xs text-slate-400 mt-1">Start compounding daily trading profits</p>
