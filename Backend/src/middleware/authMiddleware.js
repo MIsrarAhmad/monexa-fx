@@ -13,9 +13,12 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      req.user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findById(decoded.id).select('+passwordChangedAt');
       if (!req.user) {
         return res.status(401).json({ success: false, error: 'User not found' });
+      }
+      if (req.user.passwordChangedAt && decoded.iat * 1000 < req.user.passwordChangedAt.getTime()) {
+        return res.status(401).json({ success: false, error: 'Password changed. Please sign in again.' });
       }
 
       next();

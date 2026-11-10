@@ -35,7 +35,8 @@ axiosInstance.interceptors.response.use(
     const status = error.response ? error.response.status : null;
     const requestUrl = error.config ? error.config.url : '';
 
-    const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+    const isAuthRoute = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password']
+      .some((route) => requestUrl.includes(route));
 
     if (status === 401 && !isAuthRoute) {
       useAuthStore.getState().logout();

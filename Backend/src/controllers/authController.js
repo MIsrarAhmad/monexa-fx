@@ -1,12 +1,13 @@
 // Backend/src/controllers/authController.js
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
 import generateToken from '../utils/generateTokens.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { sendEmail } from '../services/emailService.js';
-import { welcomeEmailTemplate } from '../utils/emailTemplates.js';
+import { passwordResetEmailTemplate, welcomeEmailTemplate } from '../utils/emailTemplates.js';
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -172,6 +173,110 @@ export const loginUser = async (req, res, next) => {
         },
         token,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Send a password reset link when the email belongs to an account
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const requestPasswordReset = async (req, res, next) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide your email address',
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (user) {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const resetExpires = new Date(Date.now() + 30 * 60 * 1000);
+
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            passwordResetToken: resetTokenHash,
+            passwordResetExpires: resetExpires,
+          },
+        }
+      );
+
+      const frontendUrl = process.env.FRONTEND_URL || 'https://monexafx.com';
+      const resetUrl = new URL('/reset-password', frontendUrl);
+      resetUrl.searchParams.set('token', resetToken);
+
+      sendEmail({
+        to: user.email,
+        subject: 'Reset your MONEXA FX password',
+        html: passwordResetEmailTemplate(user.name, resetUrl.toString()),
+      }).then(async (emailSent) => {
+        if (!emailSent) {
+          await User.updateOne(
+            { _id: user._id, passwordResetToken: resetTokenHash },
+            { $unset: { passwordResetToken: 1, passwordResetExpires: 1 } }
+          );
+        }
+      }).catch((error) => {
+        console.error('Password reset email processing failed:', error.message);
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account exists for that email, a password reset link will be sent.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reset a password using a one-time email token
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    if (typeof token !== 'string' || !token || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'A valid reset link and a password of at least 6 characters are required',
+      });
+    }
+
+    const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.findOneAndUpdate(
+      {
+        passwordResetToken: resetTokenHash,
+        passwordResetExpires: { $gt: new Date() },
+      },
+      {
+        $set: {
+          password: hashedPassword,
+          passwordChangedAt: new Date(),
+        },
+        $unset: { passwordResetToken: 1, passwordResetExpires: 1 },
+      },
+      { runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        error: 'This password reset link is invalid or has expired. Please request a new one.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now sign in with your new password.',
     });
   } catch (error) {
     next(error);

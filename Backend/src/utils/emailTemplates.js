@@ -33,6 +33,15 @@ const baseLayout = (content) => `<!DOCTYPE html>
   </body>
 </html>`;
 
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character]);
+
 // 1. Registration Welcome Email
 export const welcomeEmailTemplate = (name, referralCode) => {
   const content = `
@@ -43,6 +52,19 @@ export const welcomeEmailTemplate = (name, referralCode) => {
     </div>
     <p>Share your link with friends to earn direct deposit bonuses ($50 USDT) and daily passive yield rewards ($0.20/day) when they invest $300 USDT or more.</p>
     <p>Minimum required deposit to activate your 1% daily yield is <strong>$300 USDT</strong>.</p>
+  `;
+  return baseLayout(content);
+};
+
+export const passwordResetEmailTemplate = (name, resetUrl) => {
+  const safeName = escapeHtml(name);
+  const safeResetUrl = escapeHtml(resetUrl);
+  const content = `
+    <h2>Password reset request</h2>
+    <p>Hello ${safeName},</p>
+    <p>We received a request to reset the password for your MONEXA FX account. This link expires in 30 minutes and can only be used once.</p>
+    <p><a class="btn" href="${safeResetUrl}">Reset password</a></p>
+    <p>If you did not request this, you can ignore this email. Your password will remain unchanged.</p>
   `;
   return baseLayout(content);
 };

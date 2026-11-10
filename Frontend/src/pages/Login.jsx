@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff, ArrowRight, ShieldAlert } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
@@ -11,6 +11,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isExpired = searchParams.get('expired') === 'true';
+  const passwordReset = searchParams.get('passwordReset') === 'true';
 
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -90,6 +91,11 @@ const Login = () => {
             <span>{error}</span>
           </div>
         )}
+        {passwordReset && (
+          <div className="mb-5 p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/80 text-emerald-300 text-xs">
+            Password reset successfully. Please sign in with your new password.
+          </div>
+        )}
 
         {/* Form Fields */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +116,12 @@ const Login = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Password</label>
+              <Link to="/forgot-password" className="text-xs font-semibold text-cyan-400 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
