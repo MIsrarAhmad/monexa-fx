@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
-const DEFAULT_API_URL = 'https://b-project-tau.vercel.app/api';
+const DEFAULT_API_URL = 'https://monexafx.com/api';
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_URL,
