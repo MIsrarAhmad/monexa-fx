@@ -21,6 +21,7 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       maxPoolSize: 10,        // Important for serverless
       minPoolSize: 0,
+      retryWrites: false,
       bufferCommands: false,  // Fail fast instead of buffering silently
     }).then((mongooseInstance) => {
       console.log(`✅ MongoDB Connected: ${mongooseInstance.connection.host}`);
