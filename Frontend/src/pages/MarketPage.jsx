@@ -1,6 +1,6 @@
 // src/pages/MarketPage.jsx
-import React, { useState } from 'react';
-import { BarChart2, Activity, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Activity, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
@@ -44,24 +44,6 @@ const MarketPage = () => {
         />
 
         <main className="flex-1 min-w-0">
-          {/* Header Banner */}
-          <div className="relative overflow-hidden rounded-2xl neon-card p-6 mb-6 border border-cyan-500/30">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">Institutional Liquidity</span>
-                  <span className="bg-cyan-900/50 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full border border-cyan-700">Real-Time Terminal</span>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2">
-                  <BarChart2 className="w-7 h-7 text-cyan-400" /> Financial Markets Terminal
-                </h1>
-                <p className="text-xs md:text-sm text-slate-400 mt-1">
-                  Interactive technical candlestick charts and real-time market data analytics.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Full Width Candlestick Chart Card with Asset Dropdown */}
           <div className="neon-card p-5 rounded-2xl border border-slate-800">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
