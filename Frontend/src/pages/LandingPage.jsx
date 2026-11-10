@@ -70,7 +70,7 @@ const LandingPage = () => {
       id: 4,
       title: 'Fast Payout Gateways',
       subtitle: 'TRON (TRC20) USDT Cashouts',
-      description: 'Execute instant withdrawal requests processed directly to your personal Pay ID or web3 TRC20 wallet within 1 to 30 minutes.',
+      description: 'Execute instant withdrawal requests processed directly to your personal USDT/TRC20 wallet within 1 to 30 minutes.',
       badge: 'Instant Liquidity',
       gradient: 'from-amber-950/80 via-slate-900 to-orange-950/60',
       border: 'border-amber-500/40',
