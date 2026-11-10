@@ -110,7 +110,7 @@ export const registerUser = async (req, res, next) => {
     // Send Welcome Email asynchronously
     sendEmail({
       to: user.email,
-      subject: 'Welcome to TradeYield - Account Active',
+      subject: 'Welcome to MonexaFX - Account Active',
       html: welcomeEmailTemplate(user.name, user.referralCode),
     }).catch((err) => console.error('Background welcome email error:', err.message));
 
