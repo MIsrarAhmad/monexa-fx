@@ -1,5 +1,5 @@
 // src/components/layout/Navbar.jsx
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, MessageCircle, Menu, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -12,7 +12,7 @@ const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications }) => {
   const BONCHAT_URL = 'https://www.bonchat.com';
 
   return (
-    <header className="sticky top-0 z-30 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-3 py-2.5 sm:px-4 sm:py-3 md:px-8">
+    <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-3 py-2.5 sm:px-4 sm:py-3 md:px-8">
       <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -24,7 +24,7 @@ const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications }) => {
           </button>
 
           {/* Logo Image & Brand Name (Redirects to Landing Page) */}
-          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition group">
+          <Link to="/" className="flex items-center gap-2.5 transition group">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-md shadow-cyan-500/20 group-hover:border-cyan-400 transition">
               <img
                 src={LOGO_IMAGE_PATH}
