@@ -21,7 +21,11 @@ export const calculateTierYield = (totalWithdrawableBalance) => {
 
 // Check and trigger flat $50 direct referral bonuses upon completion of Grace Period 1
 export const processPendingDirectReferrals = async () => {
-  const pendingReferrals = await Referral.find({ hasTriggeredInitialBonus: false });
+  const adminIds = await User.distinct('_id', { role: 'admin' });
+  const pendingReferrals = await Referral.find({
+    referrer: { $nin: adminIds },
+    hasTriggeredInitialBonus: false,
+  });
 
   for (const ref of pendingReferrals) {
     const userB = await User.findById(ref.referredUser);
@@ -102,7 +106,11 @@ export const processDailyYields = async () => {
     await processPendingDirectReferrals();
 
     // Process $0.20 daily passive referral payouts for active nodes
-    const activeReferrals = await Referral.find({ isPassiveEligible: true });
+    const adminIds = await User.distinct('_id', { role: 'admin' });
+    const activeReferrals = await Referral.find({
+      referrer: { $nin: adminIds },
+      isPassiveEligible: true,
+    });
     let referralBonusCount = 0;
 
     for (const ref of activeReferrals) {

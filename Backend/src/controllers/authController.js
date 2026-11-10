@@ -47,7 +47,12 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    const referrerUser = await User.findOne({ referralCode: normalizedReferralCode });
+    const referrerUser = await User.findOne({
+      $or: [
+        { referralCode: normalizedReferralCode },
+        { adminReferralCode: normalizedReferralCode },
+      ],
+    });
     if (!referrerUser) {
       return res.status(400).json({
         success: false,
@@ -59,10 +64,20 @@ export const registerUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     let newRefCode = generateRefCode();
-    let codeIsUnique = await User.findOne({ referralCode: newRefCode });
+    let codeIsUnique = await User.findOne({
+      $or: [
+        { referralCode: newRefCode },
+        { adminReferralCode: newRefCode },
+      ],
+    });
     while (codeIsUnique) {
       newRefCode = generateRefCode();
-      codeIsUnique = await User.findOne({ referralCode: newRefCode });
+      codeIsUnique = await User.findOne({
+        $or: [
+          { referralCode: newRefCode },
+          { adminReferralCode: newRefCode },
+        ],
+      });
     }
 
     const user = await User.create({
@@ -81,7 +96,7 @@ export const registerUser = async (req, res, next) => {
       referralBalance: 0,
     });
 
-    if (referrerUser) {
+    if (referrerUser && referrerUser.role !== 'admin') {
       await Referral.create({
         referrer: referrerUser._id,
         referredUser: user._id,

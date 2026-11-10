@@ -24,6 +24,7 @@ import {
   DollarSign,
   Clock,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
@@ -76,6 +77,18 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const res = await axiosInstance.get('/admin/stats');
       return res.data.data;
+    },
+  });
+
+  const {
+    data: adminReferralCode,
+    isLoading: loadingAdminReferralCode,
+    isError: adminReferralCodeError,
+  } = useQuery({
+    queryKey: ['adminReferralCode'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/admin/referral-code');
+      return res.data.data.referralCode;
     },
   });
 
@@ -187,6 +200,16 @@ const AdminDashboard = () => {
   const showToast = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const handleCopyAdminReferralCode = async () => {
+    if (!adminReferralCode) return;
+    try {
+      await navigator.clipboard.writeText(adminReferralCode);
+      showToast('Admin referral code copied!');
+    } catch {
+      showToast('Could not copy the admin referral code.');
+    }
   };
 
   const handleLogout = () => {
@@ -885,6 +908,34 @@ const AdminDashboard = () => {
                     <span>{changingPassword ? 'Updating...' : 'Update Password'}</span>
                   </button>
                 </form>
+              </div>
+
+              <div className="neon-card p-6 rounded-2xl border border-cyan-500/30 lg:col-span-2">
+                <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-cyan-400" /> Admin Referral Code
+                </h3>
+                <p className="text-xs text-slate-400 mb-4">
+                  Share this code with people who register. It is for referral tracking only; no bonus or reward is paid for admin referrals.
+                </p>
+                {loadingAdminReferralCode ? (
+                  <p className="text-sm text-slate-400">Generating your admin referral code...</p>
+                ) : adminReferralCodeError ? (
+                  <p className="text-sm text-rose-400">Could not load the admin referral code. Please refresh and try again.</p>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <code className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-lg font-bold tracking-widest text-cyan-300">
+                      {adminReferralCode}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyAdminReferralCode}
+                      className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-cyan-500"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy Code
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

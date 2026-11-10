@@ -7,6 +7,57 @@ import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { generateRefCode } from '../utils/generateRefCode.js';
+
+export const getAdminReferralCode = async (req, res, next) => {
+  try {
+    const admin = await User.findById(req.user._id);
+    if (!admin || admin.role !== 'admin') {
+      return res.status(404).json({ success: false, error: 'Admin account not found' });
+    }
+
+    if (!admin.adminReferralCode) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = `ADMIN-${generateRefCode()}`;
+        const codeExists = await User.exists({
+          $or: [{ referralCode: code }, { adminReferralCode: code }],
+        });
+        if (codeExists) continue;
+
+        try {
+          const updatedAdmin = await User.findOneAndUpdate(
+            { _id: admin._id, role: 'admin', adminReferralCode: { $exists: false } },
+            { $set: { adminReferralCode: code } },
+            { new: true, runValidators: true }
+          );
+          if (updatedAdmin) {
+            admin.adminReferralCode = updatedAdmin.adminReferralCode;
+            break;
+          }
+        } catch (error) {
+          if (error.code !== 11000) throw error;
+        }
+
+        const refreshedAdmin = await User.findById(admin._id);
+        if (refreshedAdmin?.adminReferralCode) {
+          admin.adminReferralCode = refreshedAdmin.adminReferralCode;
+          break;
+        }
+      }
+
+      if (!admin.adminReferralCode) {
+        throw new Error('Could not generate a unique admin referral code. Please try again.');
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { referralCode: admin.adminReferralCode },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 const getCloudinaryPublicId = (assetUrl, expectedFolder) => {
   let url;

@@ -43,6 +43,13 @@ const userSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
+    adminReferralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      uppercase: true,
+    },
     referredBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
