@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.jsx
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -12,10 +12,12 @@ import {
   User,
   LogOut,
   X,
-  Activity,
   Power,
   ShieldAlert,
   ArrowRightLeft,
+  Home,
+  BarChart2,
+  Wallet,
 } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -190,22 +192,47 @@ const Sidebar = memo(
           ) : (
             /* USER TABS */
             <>
-              <NavLink to="/verification" className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/dashboard-home" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+                <Home className="w-5 h-5 text-cyan-400" />
+                <span>Home</span>
+              </NavLink>
+
+              <NavLink to="/market" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+                <BarChart2 className="w-5 h-5 text-cyan-400" />
+                <span>Market</span>
+              </NavLink>
+
+              <NavLink to="/dashboard" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+                <Wallet className="w-5 h-5 text-cyan-400" />
+                <span>Assets</span>
+              </NavLink>
+
+              <NavLink to="/transactions" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+                <FileText className="w-5 h-5 text-cyan-400" />
+                <span>Transactions</span>
+              </NavLink>
+
+              <NavLink to="/profile" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+                <User className="w-5 h-5 text-cyan-400" />
+                <span>Profile</span>
+              </NavLink>
+
+              <NavLink to="/verification" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
                 <UserCheck className="w-5 h-5 text-cyan-400" />
                 <span>Verification</span>
               </NavLink>
 
-              <NavLink to="/referrals-page" className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/referrals-page" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
                 <Users className="w-5 h-5 text-cyan-400" />
                 <span>Referral</span>
               </NavLink>
 
-              <NavLink to="/terms-policy" className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/terms-policy" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
                 <FileText className="w-5 h-5 text-cyan-400" />
                 <span>Terms & Policy</span>
               </NavLink>
 
-              <NavLink to="/about-us" className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/about-us" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
                 <Info className="w-5 h-5 text-cyan-400" />
                 <span>About Us</span>
               </NavLink>
