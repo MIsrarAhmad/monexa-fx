@@ -589,7 +589,7 @@ const AdminDashboard = () => {
                           <th className="py-3 px-3">Investor Email</th>
                           <th className="py-3 px-3">Gross Requested</th>
                           <th className="py-3 px-3">Net Payout (20% Fee)</th>
-                          <th className="py-3 px-3">Payout Credential</th>
+                          <th className="py-3 px-3">Withdrawal Destination</th>
                           <th className="py-3 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -605,12 +605,13 @@ const AdminDashboard = () => {
                         ) : (
                           pendingWithdrawals?.map((w) => {
                             const isProcessingThis = processingId === w._id || withdrawalActionMutation.isPending;
+                            const legacyDestination = w.description?.match(/Cashout request to (.+?) \(Net Payout:/)?.[1];
                             return (
                               <tr key={w._id}>
                                 <td className="py-3 px-3 font-semibold text-white">{w.user?.email}</td>
                                 <td className="py-3 px-3 font-bold text-slate-300">${w.amount} USDT</td>
                                 <td className="py-3 px-3 font-bold text-emerald-400">${w.netAmount} USDT</td>
-                                <td className="py-3 px-3 font-mono text-cyan-400">{w.binancePayId || w.paymentMethod || 'BINANCE_PAY'}</td>
+                                <td className="py-3 px-3 font-mono text-cyan-400 break-all">{w.receiverAddress || legacyDestination || 'Address unavailable'}</td>
                                 <td className="py-3 px-3 text-right space-x-2">
                                   <button
                                     disabled={isProcessingThis}

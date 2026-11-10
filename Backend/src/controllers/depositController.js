@@ -2,7 +2,7 @@
 import Wallet from '../models/Wallet.js';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
-import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
 
 // Helper function to calculate required minimum top-up
 const getMinRequiredDeposit = (currentBalance) => {
@@ -14,7 +14,7 @@ const getMinRequiredDeposit = (currentBalance) => {
   return MINIMUM_INITIAL_DEPOSIT;
 };
 
-// @desc    Submit Manual USDT Deposit Proof (Binance Pay / TRC20)
+// @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
 // @access  Private (KYC Approved Users Only)
 export const submitManualDeposit = async (req, res, next) => {
@@ -31,10 +31,26 @@ export const submitManualDeposit = async (req, res, next) => {
 
     const { amount, txHash, paymentMethod, description } = req.body;
 
-    if (!amount || !txHash) {
+    if (paymentMethod !== 'TRC20') {
       return res.status(400).json({
         success: false,
-        error: 'Please provide deposit amount and transaction hash / Binance Order ID (TxID).',
+        error: 'Only USDT deposits through the TRON (TRC20) network are accepted.',
+      });
+    }
+
+    const depositAddress = process.env.TRC20_DEPOSIT_ADDRESS || OFFICIAL_TRC20_DEPOSIT_ADDRESS;
+    if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(depositAddress)) {
+      return res.status(503).json({
+        success: false,
+        error: 'The official USDT TRC20 deposit address is not configured. Do not send funds.',
+      });
+    }
+
+    const depositAmount = Number(amount);
+    if (!Number.isFinite(depositAmount) || depositAmount <= 0 || typeof txHash !== 'string' || !txHash.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide the deposit amount and TRC20 transaction ID (TxID).',
       });
     }
 
@@ -46,7 +62,8 @@ export const submitManualDeposit = async (req, res, next) => {
     }
 
     // Guard 2: Prevent duplicate TxID re-submissions
-    const existingTx = await Transaction.findOne({ txHash });
+    const normalizedTxHash = txHash.trim();
+    const existingTx = await Transaction.findOne({ txHash: normalizedTxHash });
     if (existingTx) {
       return res.status(400).json({
         success: false,
@@ -58,7 +75,7 @@ export const submitManualDeposit = async (req, res, next) => {
     const currentBalance = wallet ? wallet.mainBalance : 0;
     const minRequired = getMinRequiredDeposit(currentBalance);
 
-    if (Number(amount) < minRequired) {
+    if (depositAmount < minRequired) {
       return res.status(400).json({
         success: false,
         error: `Amount below required minimum. Minimum deposit allowed for your account is $${minRequired} USDT.`,
@@ -70,12 +87,12 @@ export const submitManualDeposit = async (req, res, next) => {
     const transaction = await Transaction.create({
       user: req.user._id,
       type: 'DEPOSIT',
-      amount: Number(amount),
-      txHash,
-      paymentMethod: paymentMethod || 'BINANCE_PAY',
+      amount: depositAmount,
+      txHash: normalizedTxHash,
+      paymentMethod: 'TRC20',
       paymentProofUrl,
       status: 'PENDING',
-      description: description || `Deposit proof submitted via ${paymentMethod || 'USDT'}`,
+      description: description || 'USDT TRC20 deposit proof submitted',
     });
 
     res.status(201).json({

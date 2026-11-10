@@ -85,7 +85,7 @@ export const depositApprovedTemplate = (name, amount) => {
 };
 
 // 3. Withdrawal Request Confirmation Email
-export const withdrawalRequestedTemplate = (name, amount, fee, netAmount, binancePayId) => {
+export const withdrawalRequestedTemplate = (name, amount, fee, netAmount, trc20Address) => {
   const content = `
     <h2>Withdrawal Request Received</h2>
     <p>Hello ${name},</p>
@@ -94,7 +94,7 @@ export const withdrawalRequestedTemplate = (name, amount, fee, netAmount, binanc
       <p style="margin: 0;"><strong>Requested Amount:</strong> $${amount} USDT</p>
       <p style="margin: 5px 0;"><strong>Platform Fee (20%):</strong> -$${fee} USDT</p>
       <p style="margin: 5px 0 0 0; font-size: 16px;"><strong>Net Payout Amount:</strong> <span style="color: #00F0FF; font-weight: bold;">$${netAmount} USDT</span></p>
-      <p style="margin: 5px 0 0 0;"><strong>Destination Wallet / Pay ID:</strong> ${binancePayId}</p>
+      <p style="margin: 5px 0 0 0;"><strong>USDT TRC20 Destination Address:</strong> ${escapeHtml(trc20Address)}</p>
     </div>
     <p>Our admin queue is reviewing your payment. You will receive an email once the funds are transferred (stated processing time: 1–30 minutes).</p>
   `;

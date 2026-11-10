@@ -125,7 +125,7 @@ export const getWithdrawalInfo = async (req, res, next) => {
         profitBalance: wallet.profitBalance,
         unwithdrawnProfitCounter: wallet.unwithdrawnProfitCounter,
         referralBalance: wallet.referralBalance,
-        binancePayId: wallet.binancePayId,
+        trc20Address: wallet.trc20Address,
         withdrawalRules: {
           hasUsedGracePeriod: user.hasUsedGracePeriod || priorWithdrawalCount > 0,
           isInGracePeriod,

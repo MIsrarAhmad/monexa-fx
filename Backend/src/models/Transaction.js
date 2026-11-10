@@ -41,7 +41,7 @@ const transactionSchema = new mongoose.Schema(
     },
     merchantTradeNo: {
       type: String,
-      default: null, // Binance Pay Order/Trade ID
+      default: null,
     },
     txHash: {
       type: String,
@@ -49,7 +49,11 @@ const transactionSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      default: 'BINANCE_PAY',
+      default: null,
+    },
+    receiverAddress: {
+      type: String,
+      default: null,
     },
     paymentProofUrl: {
       type: String,

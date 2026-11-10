@@ -1,5 +1,5 @@
 // src/components/modals/WithdrawModal.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, ArrowRight, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosInstance';
@@ -8,7 +8,6 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState('');
   const [receiverAccount, setReceiverAccount] = useState('');
-  const [payoutMethod, setPayoutMethod] = useState('BINANCE_PAY');
   const [error, setError] = useState('');
 
   // 1. Fetch live withdrawal eligibility & grace period status
@@ -81,12 +80,15 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
       setError('Please provide your receiving account details.');
       return;
     }
+    if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(receiverAccount.trim())) {
+      setError('Please enter a valid USDT TRC20 wallet address.');
+      return;
+    }
 
     withdrawMutation.mutate({
       amount: requestedAmount,
-      payoutMethod,
+      payoutMethod: 'TRC20',
       receiverAccount: receiverAccount.trim(),
-      binancePayId: receiverAccount.trim(),
     });
   };
 
@@ -116,7 +118,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Withdraw Funds</h3>
-            <p className="text-xs text-slate-400">Cashout directly to your Binance ID or TRC20 wallet.</p>
+            <p className="text-xs text-slate-400">Withdraw USDT to your TRON (TRC20) wallet only.</p>
           </div>
         </div>
 
@@ -159,32 +161,6 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
               <span className="font-extrabold text-cyan-300 text-sm">${totalAvailable.toFixed(2)} USDT</span>
             </div>
 
-            {/* Payout Method Selector */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPayoutMethod('BINANCE_PAY')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
-                  payoutMethod === 'BINANCE_PAY'
-                    ? 'bg-cyan-950 text-cyan-300 border-cyan-500'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-                }`}
-              >
-                Binance Pay ID
-              </button>
-              <button
-                type="button"
-                onClick={() => setPayoutMethod('TRC20')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
-                  payoutMethod === 'TRC20'
-                    ? 'bg-cyan-950 text-cyan-300 border-cyan-500'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-                }`}
-              >
-                USDT (TRC20)
-              </button>
-            </div>
-
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Withdrawal Amount (USDT)</label>
               <input
@@ -201,14 +177,16 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
 
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">
-                {payoutMethod === 'BINANCE_PAY' ? 'Your Binance Pay ID / Email' : 'Your TRC20 Wallet Address'}
+                Your USDT TRC20 Wallet Address
               </label>
               <input
                 type="text"
                 required
+                pattern="T[1-9A-HJ-NP-Za-km-z]{33}"
+                title="Enter a valid TRON (TRC20) wallet address."
                 value={receiverAccount}
                 onChange={(e) => setReceiverAccount(e.target.value)}
-                placeholder={payoutMethod === 'BINANCE_PAY' ? 'Enter Binance Pay ID' : 'Enter TRC20 address'}
+                placeholder="Enter your TRC20 address"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none font-mono"
               />
             </div>

@@ -27,7 +27,11 @@ const walletSchema = new mongoose.Schema(
     },
     binancePayId: {
       type: String,
-      default: '', // User's personal Binance Pay ID for receiving withdrawals
+      default: '', // Legacy field retained for existing wallet records
+    },
+    trc20Address: {
+      type: String,
+      default: '',
     },
     lastWithdrawalAt: {
       type: Date,

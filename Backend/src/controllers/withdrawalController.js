@@ -13,7 +13,7 @@ import {
 // @access  Private (KYC Approved Users Only)
 export const requestWithdrawal = async (req, res, next) => {
   try {
-    const { amount, binancePayId, payoutMethod, receiverAccount } = req.body;
+    const { amount, payoutMethod, receiverAccount } = req.body;
 
     // Guard 1: Strict KYC Enforcement
     const user = await User.findById(req.user._id);
@@ -24,13 +24,18 @@ export const requestWithdrawal = async (req, res, next) => {
       });
     }
 
-    if (!amount || Number(amount) <= 0) {
+    const withdrawAmount = Number(amount);
+    if (!Number.isFinite(withdrawAmount) || withdrawAmount <= 0) {
       return res.status(400).json({ success: false, error: 'Please specify a valid withdrawal amount.' });
     }
 
-    const targetAccount = receiverAccount || binancePayId;
-    if (!targetAccount) {
-      return res.status(400).json({ success: false, error: 'Please provide your Binance Pay ID or TRC20 receiving address.' });
+    if (payoutMethod !== 'TRC20') {
+      return res.status(400).json({ success: false, error: 'Only USDT withdrawals through the TRON (TRC20) network are accepted.' });
+    }
+
+    const targetAccount = typeof receiverAccount === 'string' ? receiverAccount.trim() : '';
+    if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(targetAccount)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid USDT TRC20 receiving address.' });
     }
 
     const wallet = await Wallet.findOne({ user: req.user._id });
@@ -38,7 +43,6 @@ export const requestWithdrawal = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Wallet record not found.' });
     }
 
-    const withdrawAmount = Number(amount);
     const totalAvailable = wallet.profitBalance + wallet.referralBalance + wallet.mainBalance;
 
     // Guard 2: Total Balance Check
@@ -104,7 +108,7 @@ export const requestWithdrawal = async (req, res, next) => {
       wallet.mainBalance -= remainingToDeduct;
     }
 
-    wallet.binancePayId = targetAccount;
+    wallet.trc20Address = targetAccount;
     await wallet.save();
 
     // Create PENDING transaction entry
@@ -114,9 +118,10 @@ export const requestWithdrawal = async (req, res, next) => {
       amount: withdrawAmount,
       feeDeducted,
       netAmount,
-      paymentMethod: payoutMethod || 'BINANCE_PAY',
+      paymentMethod: 'TRC20',
+      receiverAddress: targetAccount,
       status: 'PENDING',
-      description: `Cashout request to ${targetAccount} (Net Payout: $${netAmount} USDT)`,
+      description: `USDT TRC20 withdrawal request (Net Payout: $${netAmount} USDT)`,
     });
 
     res.status(200).json({
