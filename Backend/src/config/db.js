@@ -14,9 +14,12 @@ const connectDB = async () => {
     return cached.conn;
   }
 
+  const mongoUri = new URL(process.env.MONGO_URI);
+  mongoUri.searchParams.set('retryWrites', 'false');
+
   // Reuse pending connection promise (prevents duplicate connections)
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGO_URI, {
+    cached.promise = mongoose.connect(mongoUri.toString(), {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10,        // Important for serverless

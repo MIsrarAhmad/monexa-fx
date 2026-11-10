@@ -200,40 +200,28 @@ export const permanentlyDeleteUser = async (req, res, next) => {
 
     await deleteCloudinaryAssets(assetUrls);
 
-    const session = await mongoose.startSession();
-    let deletedCounts;
-    try {
-      await session.withTransaction(async () => {
-        await User.updateMany({ referredBy: user._id }, { $set: { referredBy: null } }, { session });
-        const referrals = await Referral.deleteMany(
-          { $or: [{ referrer: user._id }, { referredUser: user._id }] },
-          { session }
-        );
-        const wallet = await Wallet.deleteOne({ user: user._id }, { session });
-        const transactionRecords = await Transaction.deleteMany({ user: user._id }, { session });
-        const deletedUser = await User.deleteOne(
-          { _id: user._id, email: user.email, role: 'user' },
-          { session }
-        );
+    await User.updateMany({ referredBy: user._id }, { $set: { referredBy: null } });
+    const referrals = await Referral.deleteMany({
+      $or: [{ referrer: user._id }, { referredUser: user._id }],
+    });
+    const wallet = await Wallet.deleteOne({ user: user._id });
+    const transactionRecords = await Transaction.deleteMany({ user: user._id });
+    const deletedUser = await User.deleteOne(
+      { _id: user._id, email: user.email, role: 'user' }
+    );
 
-        if (deletedUser.deletedCount !== 1) {
-          throw new Error('The user account could not be deleted; no database records were removed.');
-        }
-
-        deletedCounts = {
-          wallets: wallet.deletedCount,
-          referrals: referrals.deletedCount,
-          transactions: transactionRecords.deletedCount,
-        };
-      });
-    } finally {
-      await session.endSession();
+    if (deletedUser.deletedCount !== 1) {
+      throw new Error('The user account could not be deleted. Some linked records may already have been removed; retry after checking the user directory.');
     }
 
     res.status(200).json({
       success: true,
       message: `User ${user.email} and linked account records were permanently deleted.`,
-      data: deletedCounts,
+      data: {
+        wallets: wallet.deletedCount,
+        referrals: referrals.deletedCount,
+        transactions: transactionRecords.deletedCount,
+      },
     });
   } catch (error) {
     next(error);
