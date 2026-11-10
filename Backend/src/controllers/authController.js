@@ -22,6 +22,15 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
+    const normalizedReferralCode =
+      typeof referralCode === 'string' ? referralCode.trim().toUpperCase() : '';
+    if (!normalizedReferralCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide an invitation code',
+      });
+    }
+
     const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
       return res.status(400).json({
@@ -30,15 +39,12 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    let referrerUser = null;
-    if (referralCode) {
-      referrerUser = await User.findOne({ referralCode: referralCode.toUpperCase() });
-      if (!referrerUser) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid referral code provided',
-        });
-      }
+    const referrerUser = await User.findOne({ referralCode: normalizedReferralCode });
+    if (!referrerUser) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid referral code provided',
+      });
     }
 
     const salt = await bcrypt.genSalt(10);

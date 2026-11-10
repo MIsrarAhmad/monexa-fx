@@ -150,13 +150,14 @@ const Register = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Invitation Code <span className="text-slate-500 font-normal">(Optional)</span>
+              Invitation Code <span className="text-rose-400 font-normal">(Required)</span>
             </label>
             <div className="relative">
               <Users className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
                 name="referralCode"
+                required
                 value={formData.referralCode}
                 onChange={handleChange}
                 placeholder="e.g. A3F9B2"
