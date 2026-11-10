@@ -29,7 +29,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
   });
 
   const isKycApproved = kycData?.kycStatus === 'APPROVED';
-  const minRequired = 300;
+  const minRequired = 30;
 
   // Deposit Submit Mutation
   const depositMutation = useMutation({
@@ -151,6 +151,9 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
               <span className="text-slate-300">Minimum per deposit:</span>
               <span className="font-extrabold text-cyan-400 text-sm">${minRequired}.00 USDT</span>
             </div>
+            <p className="text-xs text-slate-400 -mt-2 mb-4">
+              Daily yield activates when your main balance reaches $300 USDT.
+            </p>
 
             {/* Error Alert */}
             {error && (

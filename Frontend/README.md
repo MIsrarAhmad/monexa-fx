@@ -2,7 +2,7 @@
 
 ## USDT deposits
 
-Only USDT on the TRON (TRC20) network is supported. The public receiving address is configured by `VITE_TRC20_DEPOSIT_ADDRESS` for the frontend build and `OFFICIAL_TRC20_DEPOSIT_ADDRESS` in `../Backend/src/config/constants.js`; both values must be valid and identical. The backend `TRC20_DEPOSIT_ADDRESS` environment variable can override its source default. Never configure a private key or recovery phrase in either environment.
+Only USDT on the TRON (TRC20) network is supported. Each deposit must be at least $30 USDT; daily yield activation still requires a $300 main balance. The public receiving address is configured by `VITE_TRC20_DEPOSIT_ADDRESS` for the frontend build and `OFFICIAL_TRC20_DEPOSIT_ADDRESS` in `../Backend/src/config/constants.js`; both values must be valid and identical. The backend `TRC20_DEPOSIT_ADDRESS` environment variable can override its source default. Never configure a private key or recovery phrase in either environment.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

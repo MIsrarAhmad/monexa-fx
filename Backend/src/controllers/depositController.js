@@ -1,7 +1,7 @@
 // src/controllers/depositController.js
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
-import { MINIMUM_INITIAL_DEPOSIT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
+import { MINIMUM_DEPOSIT_AMOUNT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
 
 // @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
@@ -60,10 +60,10 @@ export const submitManualDeposit = async (req, res, next) => {
       });
     }
 
-    if (depositAmount < MINIMUM_INITIAL_DEPOSIT) {
+    if (depositAmount < MINIMUM_DEPOSIT_AMOUNT) {
       return res.status(400).json({
         success: false,
-        error: `Amount below required minimum. Every deposit must be at least $${MINIMUM_INITIAL_DEPOSIT} USDT.`,
+        error: `Amount below required minimum. Every deposit must be at least $${MINIMUM_DEPOSIT_AMOUNT} USDT.`,
       });
     }
 

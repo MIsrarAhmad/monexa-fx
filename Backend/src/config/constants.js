@@ -1,6 +1,7 @@
 // Backend/src/config/constants.js
 
 // Investment Thresholds
+export const MINIMUM_DEPOSIT_AMOUNT = 30;
 export const MINIMUM_INITIAL_DEPOSIT = 300; // $300 minimum deposit threshold
 export const OFFICIAL_TRC20_DEPOSIT_ADDRESS = 'TQfojQp5kTeUm6dKWtn12SF2ZzToauLSX4';
 
