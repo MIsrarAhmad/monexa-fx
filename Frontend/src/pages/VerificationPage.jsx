@@ -279,15 +279,16 @@ const VerificationPage = () => {
                         <input
                           type="file"
                           accept="image/*"
+                          capture="user"
                           className="hidden"
                           onChange={(e) => handleFileChange(e, setSelfieFile, setSelfiePreview)}
                         />
                         {selfiePreview ? (
-                          <img src={selfiePreview} alt="Selfie" className="h-24 w-full object-cover rounded-lg" />
+                          <img src={selfiePreview} alt="Selfie Verification" className="h-24 w-full object-cover rounded-lg" />
                         ) : (
                           <div className="py-3">
                             <ImageIcon className="w-6 h-6 text-cyan-400 mx-auto mb-1" />
-                            <span className="font-bold text-slate-300 block">Selfie with ID</span>
+                            <span className="font-bold text-slate-300 block">Selfie Verification</span>
                             <span className="text-[10px] text-slate-500">JPG/PNG up to 5MB</span>
                           </div>
                         )}
