@@ -9,8 +9,7 @@ import NotificationCenter from './NotificationCenter';
 const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
 
-  // Replace with your official BonChat link or server invite URL
-  const BONCHAT_URL = 'https://www.bonchat.com';
+  const MONEXAFX_CHAT_URL = 'https://smp15.simplex.im/c#e1j3FUyEqT0OzeGprP26OZ7yea6nqTMULxV-yCG5ouU';
 
   return (
     <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-3 py-2.5 sm:px-4 sm:py-3 md:px-8">
@@ -53,18 +52,18 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           </Link>
         </div>
 
-        {/* Right BonChat Link, Notifications & User Info */}
+        {/* Right chat link, notifications & user info */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Official BonChat Community Link */}
+          {/* MonexaFX Chat */}
           <a
-            href={BONCHAT_URL}
+            href={MONEXAFX_CHAT_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="relative p-1.5 sm:p-2 rounded-xl bg-cyan-950/80 text-cyan-300 hover:text-white hover:bg-cyan-900/80 border border-cyan-700/50 transition flex items-center gap-1.5 text-xs font-bold shadow-md shadow-cyan-950/40"
-            title="Connect via Official BonChat"
+            title="Open MonexaFX Chat"
           >
             <MessageCircle className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">BonChat</span>
+            <span className="whitespace-nowrap text-[10px] sm:text-xs">MonexaFX Chat</span>
             <ExternalLink className="w-3 h-3 text-cyan-400/70" />
           </a>
 
