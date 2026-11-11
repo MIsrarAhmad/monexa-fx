@@ -33,7 +33,8 @@ const AboutUsPage = () => {
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
       <Navbar
-        onMobileSidebarToggle={() => setSidebarOpen(true)}
+        isMobileSidebarOpen={sidebarOpen}
+        onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
         onOpenNotifications={() => showToast('No new notifications')}
       />
 

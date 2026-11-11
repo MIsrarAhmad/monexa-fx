@@ -1,11 +1,11 @@
 // src/components/layout/Navbar.jsx
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, MessageCircle, Menu, ExternalLink } from 'lucide-react';
+import { Bell, MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import LOGO_IMAGE_PATH from '../../assets/logo.jpeg';
 
-const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications }) => {
+const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
 
   // Replace with your official BonChat link or server invite URL
@@ -18,9 +18,11 @@ const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications }) => {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onMobileSidebarToggle}
+            aria-label={isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={isMobileSidebarOpen}
             className="md:hidden text-gray-300 hover:text-cyan-400 focus:outline-none p-1.5 rounded-lg bg-gray-900/50"
           >
-            <Menu className="w-5 h-5" />
+            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
           {/* Logo Image & Brand Name (Redirects to Landing Page) */}
