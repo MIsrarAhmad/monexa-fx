@@ -13,7 +13,7 @@ export const generateTransactionPDF = (transactions, userName = 'Investor') => {
   doc.setTextColor(0, 212, 255);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('TradeYield', 14, 22);
+  doc.text('Monexa FX', 14, 22);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
@@ -57,7 +57,7 @@ export const generateTransactionPDF = (transactions, userName = 'Investor') => {
     },
   });
 
-  doc.save(`TradeYield_Statement_${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`Monexa_FX_Statement_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
 // 2. Download Individual Transaction Receipt
