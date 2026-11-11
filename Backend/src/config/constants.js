@@ -6,8 +6,7 @@ export const MINIMUM_INITIAL_DEPOSIT = 300; // $300 minimum deposit threshold
 export const OFFICIAL_TRC20_DEPOSIT_ADDRESS = 'TQfojQp5kTeUm6dKWtn12SF2ZzToauLSX4';
 
 // Withdrawal Rules
-// 3 minutes testing threshold (0.05 hours = 3 minutes)
-export const WITHDRAWAL_GRACE_PERIOD_HOURS = 0.05; 
+export const WITHDRAWAL_GRACE_PERIOD_HOURS = 24;
 export const WITHDRAWAL_LOCK_PROFIT_TARGET = 50;  // $50 profit required after grace period
 export const WITHDRAWAL_FEE_PERCENTAGE = 0.20;   // 20% platform fee deduction
 

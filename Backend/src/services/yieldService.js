@@ -8,6 +8,7 @@ import {
   REFERRAL_DIRECT_BONUS_FLAT,
   REFERRAL_DAILY_PASSIVE_USD,
   MINIMUM_INITIAL_DEPOSIT,
+  WITHDRAWAL_GRACE_PERIOD_HOURS,
 } from '../config/constants.js';
 
 // Calculate tier floor yield on total withdrawable balance ($300-$399 = $3, $400-$499 = $4, $500-$599 = $5, etc.)
@@ -33,7 +34,10 @@ export const processPendingDirectReferrals = async () => {
 
     if (userB && walletB) {
       const isBalanceEligible = walletB.mainBalance >= MINIMUM_INITIAL_DEPOSIT;
-      const completedFirstGracePeriod = userB.hasUsedGracePeriod || Boolean(userB.firstDepositAt);
+      const completedFirstGracePeriod = userB.hasUsedGracePeriod || (
+        userB.firstDepositAt
+        && Date.now() - new Date(userB.firstDepositAt).getTime() >= WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000
+      );
 
       if (isBalanceEligible && completedFirstGracePeriod) {
         const walletA = await Wallet.findOne({ user: ref.referrer });
@@ -75,6 +79,13 @@ export const processDailyYields = async () => {
     let totalYieldDistributed = 0;
 
     for (const wallet of allWallets) {
+      const firstDepositAt = wallet.user?.firstDepositAt
+        ? new Date(wallet.user.firstDepositAt).getTime()
+        : null;
+      const activationPeriodIsActive = firstDepositAt !== null
+        && Date.now() - firstDepositAt < WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000;
+      if (activationPeriodIsActive) continue;
+
       // Total withdrawable balance = Principal + Accumulated Yield + Referral Commissions
       const totalWithdrawable = wallet.mainBalance + wallet.profitBalance + wallet.referralBalance;
 
