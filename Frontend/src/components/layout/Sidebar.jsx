@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.jsx
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -40,6 +40,65 @@ const Sidebar = memo(
 
     const isAdmin = user?.role === 'admin';
 
+    useEffect(() => {
+      if (!isOpen || window.matchMedia('(min-width: 768px)').matches) return undefined;
+
+      const scrollY = window.scrollY;
+      const bodyStyles = {
+        position: document.body.style.position,
+        top: document.body.style.top,
+        width: document.body.style.width,
+        overflow: document.body.style.overflow,
+      };
+      const rootOverflow = document.documentElement.style.overflow;
+      let lastTouchY = 0;
+
+      const handleTouchStart = (event) => {
+        lastTouchY = event.touches[0].clientY;
+      };
+      const handleTouchMove = (event) => {
+        const drawer = event.target instanceof Element
+          ? event.target.closest('[data-mobile-sidebar]')
+          : null;
+
+        if (!drawer) {
+          event.preventDefault();
+          return;
+        }
+
+        const touchY = event.touches[0].clientY;
+        const deltaY = touchY - lastTouchY;
+        lastTouchY = touchY;
+
+        if (
+          drawer.scrollHeight <= drawer.clientHeight ||
+          (drawer.scrollTop <= 0 && deltaY > 0) ||
+          (drawer.scrollTop + drawer.clientHeight >= drawer.scrollHeight && deltaY < 0)
+        ) {
+          event.preventDefault();
+        }
+      };
+
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.addEventListener('touchstart', handleTouchStart, { passive: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+      return () => {
+        document.removeEventListener('touchstart', handleTouchStart);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.body.style.position = bodyStyles.position;
+        document.body.style.top = bodyStyles.top;
+        document.body.style.width = bodyStyles.width;
+        document.body.style.overflow = bodyStyles.overflow;
+        document.documentElement.style.overflow = rootOverflow;
+        window.scrollTo(0, scrollY);
+      };
+    }, [isOpen]);
+
     // Fetch live KYC status for regular users
     const { data: kycData } = useQuery({
       queryKey: ['kyc-status-sidebar'],
@@ -68,13 +127,23 @@ const Sidebar = memo(
     const totalPendingTransactions = pendingWithdrawalsCount + pendingDepositsCount;
 
     return (
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0a101d] ${
-          isAdmin ? 'border-r border-purple-900/30' : 'border-r border-cyan-900/30'
-        } p-5 transform transition-transform duration-300 md:relative md:translate-x-0 md:bg-transparent md:border-r-0 md:p-0 md:w-60 shrink-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      <>
+        {isOpen && (
+          <button
+            type="button"
+            onClick={onCloseSidebar}
+            aria-label="Close navigation menu"
+            className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          />
+        )}
+        <aside
+          data-mobile-sidebar
+          className={`fixed inset-y-0 left-0 z-40 w-64 overflow-y-auto overscroll-contain touch-pan-y bg-[#0a101d] ${
+            isAdmin ? 'border-r border-purple-900/30' : 'border-r border-cyan-900/30'
+          } p-5 transform transition-transform duration-300 md:relative md:translate-x-0 md:overflow-visible md:overscroll-auto md:bg-transparent md:border-r-0 md:p-0 md:w-60 shrink-0 ${
+            isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
         <div className="flex justify-between items-center mb-6 md:hidden">
           <span className={`text-lg font-bold ${isAdmin ? 'text-purple-400' : 'text-cyan-400'}`}>
             Navigation Menu
@@ -275,7 +344,8 @@ const Sidebar = memo(
             <span>Logout</span>
           </button>
         </div>
-      </aside>
+        </aside>
+      </>
     );
   }
 );
