@@ -23,24 +23,15 @@ import { useAuthStore } from '../store/useAuthStore';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
-import Toast from '../components/common/Toast';
 
 const TermsPolicyPage = () => {
   const logout = useAuthStore((state) => state.logout);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3500);
-  };
-
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
       <Navbar
         isMobileSidebarOpen={sidebarOpen}
         onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-        onOpenNotifications={() => showToast('No new notifications')}
       />
 
       <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">
@@ -305,7 +296,6 @@ const TermsPolicyPage = () => {
       </div>
 
       <BottomNav />
-      <Toast message={toastMsg} />
     </div>
   );
 };

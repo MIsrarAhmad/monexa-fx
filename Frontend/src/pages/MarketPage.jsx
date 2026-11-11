@@ -5,20 +5,12 @@ import { useAuthStore } from '../store/useAuthStore';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
-import Toast from '../components/common/Toast';
 
 const MarketPage = () => {
   const logout = useAuthStore((state) => state.logout);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  
   // Gold (XAUUSD) selected by default
   const [selectedAsset, setSelectedAsset] = useState('XAUUSD');
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3500);
-  };
 
   const marketAssets = [
     { symbol: 'XAUUSD', name: 'Gold / US Dollar (XAUUSD)', category: 'Commodities' },
@@ -34,7 +26,6 @@ const MarketPage = () => {
       <Navbar
         isMobileSidebarOpen={sidebarOpen}
         onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-        onOpenNotifications={() => showToast('No new market alerts')}
       />
 
       <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">
@@ -90,7 +81,6 @@ const MarketPage = () => {
       </div>
 
       <BottomNav />
-      <Toast message={toastMsg} />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   MINIMUM_INITIAL_DEPOSIT,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
 } from '../config/constants.js';
+import { notifyUser } from './notificationService.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -57,6 +58,13 @@ export const processPendingDirectReferrals = async () => {
             type: 'REFERRAL_DIRECT_BONUS',
             amount: REFERRAL_DIRECT_BONUS_FLAT,
             description: `Flat $50 direct referral reward credited upon referred user completing initial grace period hold`,
+          });
+          await notifyUser({
+            userId: ref.referrer,
+            type: 'REFERRAL_REWARD',
+            title: 'Referral reward credited',
+            message: '$50.00 USDT has been added to your referral balance.',
+            url: '/referrals',
           });
 
           ref.hasTriggeredInitialBonus = true;
@@ -146,6 +154,13 @@ export const processDailyYields = async () => {
           amount: yieldAmount,
           description: `Daily 1% yield on $${wallet.mainBalance.toFixed(2)} USDT qualifying investment balance`,
         });
+        await notifyUser({
+          userId: wallet.user._id,
+          type: 'DAILY_YIELD',
+          title: 'Your daily profit has been credited',
+          message: `$${yieldAmount.toFixed(2)} USDT (1% of your qualifying investment balance) has been added to your profit balance.`,
+          url: '/transactions',
+        });
 
         if (wallet.user.firstDepositAt && !wallet.user.hasUsedGracePeriod) {
           await User.findByIdAndUpdate(wallet.user._id, { hasUsedGracePeriod: true });
@@ -195,6 +210,13 @@ export const processDailyYields = async () => {
             type: 'REFERRAL_DAILY_PASSIVE',
             amount: REFERRAL_DAILY_PASSIVE_USD,
             description: `Daily passive referral bonus from active user node`,
+          });
+          await notifyUser({
+            userId: ref.referrer,
+            type: 'REFERRAL_REWARD',
+            title: 'Referral income credited',
+            message: `$${REFERRAL_DAILY_PASSIVE_USD.toFixed(2)} USDT has been added to your referral balance.`,
+            url: '/referrals',
           });
 
           ref.totalEarnedFromUser += REFERRAL_DAILY_PASSIVE_USD;

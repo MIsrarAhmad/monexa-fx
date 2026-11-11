@@ -11,6 +11,7 @@ import {
   toggleMaintenanceStatus,
   permanentlyDeleteUser,
   getAdminReferralCode,
+  createAnnouncement,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.get('/maintenance', getMaintenanceStatus);
 router.use(protect, adminOnly);
 router.get('/stats', getAdminStats);
 router.get('/referral-code', getAdminReferralCode);
+router.post('/announcements', createAnnouncement);
 router.delete('/users/:userId', permanentlyDeleteUser);
 router.get('/withdrawals/pending', getPendingWithdrawals);
 router.put('/withdrawals/:id/action', processWithdrawalAction);

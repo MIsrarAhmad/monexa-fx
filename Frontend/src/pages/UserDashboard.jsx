@@ -141,7 +141,6 @@ const UserDashboard = () => {
       <Navbar
         isMobileSidebarOpen={sidebarOpen}
         onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-        onOpenNotifications={() => showToast('No new notifications')}
       />
 
       <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">

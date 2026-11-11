@@ -2,6 +2,7 @@
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
 import { MINIMUM_DEPOSIT_AMOUNT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
+import { notifyUser } from '../services/notificationService.js';
 
 // @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
@@ -78,6 +79,13 @@ export const submitManualDeposit = async (req, res, next) => {
       paymentProofUrl,
       status: 'PENDING',
       description: description || 'USDT TRC20 deposit proof submitted',
+    });
+    await notifyUser({
+      userId: req.user._id,
+      type: 'DEPOSIT_PENDING',
+      title: 'Deposit proof received',
+      message: `Your $${depositAmount.toFixed(2)} USDT deposit proof is in the review queue. We’ll notify you when it’s processed.`,
+      url: '/transactions',
     });
 
     res.status(201).json({

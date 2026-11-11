@@ -16,6 +16,7 @@ import adminRoutes from './src/routes/adminRoutes.js';
 import referralRoutes from './src/routes/referralRoutes.js';
 import kycRoutes from './src/routes/kycRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
+import notificationRoutes from './src/routes/notificationRoutes.js';
 import errorHandler from './src/middleware/errorHandler.js';
 
 // === IMPORT YIELD CRON WORKER ===
@@ -91,6 +92,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.send({ status: 'Monexafx Exchange API running securely...' });

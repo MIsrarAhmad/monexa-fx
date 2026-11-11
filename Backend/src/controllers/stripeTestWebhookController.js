@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
+import { notifyUser } from '../services/notificationService.js';
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -50,6 +51,13 @@ export const handleStripeTestWebhook = async (req, res) => {
           { $inc: { mainBalance: transaction.amount } },
           { upsert: true, new: true }
         );
+        await notifyUser({
+          userId: transaction.user,
+          type: 'DEPOSIT_APPROVED',
+          title: 'Deposit credited successfully',
+          message: `$${transaction.amount.toFixed(2)} USDT has been credited to your investment balance.`,
+          url: '/transactions',
+        });
 
         console.log(`✅ [TEST MODE] Deposit ${transactionId} approved! $${transaction.amount} credited & firstDepositAt set.`);
       }

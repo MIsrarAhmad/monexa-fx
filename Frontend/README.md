@@ -6,6 +6,12 @@ Only USDT on the TRON (TRC20) network is supported. Each deposit must be at leas
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Account and mobile notifications
+
+The notification bell shows account activity and admin announcements. Users can opt in to mobile browser notifications from the bell menu. Push delivery requires HTTPS and the backend environment variables `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` to be configured; generate a key pair with `npx web-push generate-vapid-keys` from the `Backend` directory and keep the private key only in the backend host's secret environment. Do not commit either key. The server persists inbox notifications even while push delivery is not configured.
+
+Mobile alerts are sent for credited daily yield, referral rewards, deposit/withdrawal submission and review outcomes, and admin announcements. On iPhone or iPad, users must add the site to the Home Screen and enable notifications for the installed web app. On Android, users must allow notifications in their browser.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

@@ -25,6 +25,7 @@ import {
   Clock,
   Trash2,
   Copy,
+  Megaphone,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
@@ -49,6 +50,9 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'kyc', 'deposits', 'withdrawals', 'users', 'profile'
   const [toastMsg, setToastMsg] = useState('');
   const [processingId, setProcessingId] = useState(null);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [isPublishingAnnouncement, setIsPublishingAnnouncement] = useState(false);
 
   // KYC Review States
   const [selectedKycUser, setSelectedKycUser] = useState(null);
@@ -202,6 +206,26 @@ const AdminDashboard = () => {
     setTimeout(() => setToastMsg(''), 3500);
   };
 
+  const handlePublishAnnouncement = async (event) => {
+    event.preventDefault();
+    if (!window.confirm('Send this announcement to every user inbox and enabled mobile device?')) return;
+
+    setIsPublishingAnnouncement(true);
+    try {
+      const response = await axiosInstance.post('/admin/announcements', {
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+      });
+      showToast(response.data.message);
+      setAnnouncementTitle('');
+      setAnnouncementMessage('');
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Could not publish the announcement.');
+    } finally {
+      setIsPublishingAnnouncement(false);
+    }
+  };
+
   const handleCopyAdminReferralCode = async () => {
     if (!adminReferralCode) return;
     try {
@@ -267,7 +291,6 @@ const AdminDashboard = () => {
       <Navbar
         isMobileSidebarOpen={sidebarOpen}
         onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-        onOpenNotifications={() => showToast('No new notifications')}
       />
 
       <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">
@@ -811,6 +834,58 @@ const AdminDashboard = () => {
                 </table>
               </div>
             </div>
+          )}
+
+          {activeTab === 'announcements' && (
+            <section className="neon-card p-6 rounded-2xl border border-slate-800 max-w-3xl">
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-amber-400" /> Send a website update
+              </h3>
+              <p className="text-xs text-slate-400 mb-5">
+                This creates an inbox notification for all users. Mobile alerts require push setup and user opt-in.
+              </p>
+              <form onSubmit={handlePublishAnnouncement} className="space-y-4">
+                <div>
+                  <label htmlFor="announcement-title" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Notification title
+                  </label>
+                  <input
+                    id="announcement-title"
+                    value={announcementTitle}
+                    onChange={(event) => setAnnouncementTitle(event.target.value)}
+                    minLength={3}
+                    maxLength={100}
+                    required
+                    placeholder="For example: New account feature"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="announcement-message" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Message
+                  </label>
+                  <textarea
+                    id="announcement-message"
+                    value={announcementMessage}
+                    onChange={(event) => setAnnouncementMessage(event.target.value)}
+                    minLength={5}
+                    maxLength={300}
+                    rows={4}
+                    required
+                    placeholder="Write a clear, professional update for your users."
+                    className="w-full resize-y bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  />
+                  <p className="text-right text-[10px] text-slate-500 mt-1">{announcementMessage.length}/300</p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isPublishingAnnouncement}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs disabled:opacity-50"
+                >
+                  {isPublishingAnnouncement ? 'Sending...' : 'Send to all users'}
+                </button>
+              </form>
+            </section>
           )}
 
           {/* TAB 6: ADMIN PROFILE SETTINGS */}

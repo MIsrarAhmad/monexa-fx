@@ -8,6 +8,7 @@ import {
   WITHDRAWAL_LOCK_PROFIT_TARGET,
   WITHDRAWAL_FEE_PERCENTAGE,
 } from '../config/constants.js';
+import { notifyUser } from '../services/notificationService.js';
 
 // @desc    Submit Cashout/Withdrawal Request (Sends to Admin Pending Queue)
 // @route   POST /api/withdrawals/request
@@ -140,6 +141,13 @@ export const requestWithdrawal = async (req, res, next) => {
       receiverAddress: targetAccount,
       status: 'PENDING',
       description: `USDT TRC20 withdrawal request (Net Payout: $${netAmount} USDT)`,
+    });
+    await notifyUser({
+      userId: req.user._id,
+      type: 'WITHDRAWAL_PENDING',
+      title: 'Withdrawal request received',
+      message: `Your $${withdrawAmount.toFixed(2)} USDT TRC20 withdrawal request is awaiting admin review.`,
+      url: '/transactions',
     });
 
     res.status(200).json({

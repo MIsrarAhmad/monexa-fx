@@ -1,11 +1,12 @@
 // src/components/layout/Navbar.jsx
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
+import { MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import LOGO_IMAGE_PATH from '../../assets/logo.jpeg';
+import NotificationCenter from './NotificationCenter';
 
-const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications, isMobileSidebarOpen }) => {
+const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
 
   // Replace with your official BonChat link or server invite URL
@@ -67,15 +68,7 @@ const Navbar = memo(({ onMobileSidebarToggle, onOpenNotifications, isMobileSideb
             <ExternalLink className="w-3 h-3 text-cyan-400/70" />
           </a>
 
-          {/* Notification Bell Icon */}
-          <button
-            onClick={onOpenNotifications}
-            className="relative p-1.5 sm:p-2 rounded-xl bg-slate-900/80 text-gray-300 hover:text-cyan-400 border border-slate-800 transition"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-          </button>
+          <NotificationCenter />
 
           {/* User Profile Summary */}
           <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-slate-800">

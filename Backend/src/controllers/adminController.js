@@ -8,6 +8,7 @@ import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
+import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -327,6 +328,13 @@ export const processDepositAction = async (req, res, next) => {
     if (action === 'REJECT') {
       transaction.status = 'REJECTED';
       await transaction.save();
+      await notifyUser({
+        userId: transaction.user,
+        type: 'DEPOSIT_REJECTED',
+        title: 'Deposit proof needs attention',
+        message: 'Your USDT deposit proof was not approved. Please check the submitted details and contact support if you need help.',
+        url: '/transactions',
+      });
       return res.status(200).json({
         success: true,
         message: 'Deposit proof rejected. User main balance was not altered.',
@@ -358,6 +366,13 @@ export const processDepositAction = async (req, res, next) => {
 
     transaction.status = 'COMPLETED';
     await transaction.save();
+    await notifyUser({
+      userId: transaction.user,
+      type: 'DEPOSIT_APPROVED',
+      title: 'Deposit credited successfully',
+      message: `$${depositAmount.toFixed(2)} USDT has been credited to your investment balance.`,
+      url: '/transactions',
+    });
 
     res.status(200).json({
       success: true,
@@ -451,6 +466,13 @@ export const processWithdrawalAction = async (req, res, next) => {
 
       transaction.status = 'REJECTED';
       await transaction.save();
+      await notifyUser({
+        userId: transaction.user,
+        type: 'WITHDRAWAL_REJECTED',
+        title: 'Withdrawal request update',
+        message: `Your $${transaction.amount.toFixed(2)} USDT withdrawal was not approved. Reserved funds have been restored to your wallet.`,
+        url: '/transactions',
+      });
 
       return res.status(200).json({
         success: true,
@@ -474,11 +496,41 @@ export const processWithdrawalAction = async (req, res, next) => {
       transaction.txHash = payoutTxHash;
     }
     await transaction.save();
+    await notifyUser({
+      userId: transaction.user,
+      type: 'WITHDRAWAL_APPROVED',
+      title: 'Withdrawal request completed',
+      message: `$${transaction.netAmount.toFixed(2)} USDT has been marked as paid to your TRC20 wallet.`,
+      url: '/transactions',
+    });
 
     res.status(200).json({
       success: true,
       message: `Withdrawal approved. Payout marked completed for net $${transaction.netAmount} USDT.`,
       data: transaction,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createAnnouncement = async (req, res, next) => {
+  try {
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+
+    if (title.length < 3 || title.length > 100 || message.length < 5 || message.length > 300) {
+      return res.status(400).json({
+        success: false,
+        error: 'Announcement title must be 3–100 characters and message must be 5–300 characters.',
+      });
+    }
+
+    const createdCount = await publishAnnouncement({ title, message });
+    res.status(201).json({
+      success: true,
+      message: `Announcement added to ${createdCount} user inboxes. Mobile alerts go to devices that enabled them.`,
+      data: { createdCount },
     });
   } catch (error) {
     next(error);

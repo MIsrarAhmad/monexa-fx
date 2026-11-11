@@ -6,6 +6,7 @@ import { generateBinanceSignature } from '../config/binance.js';
 import { sendEmail } from '../services/emailService.js';
 import { depositApprovedTemplate } from '../utils/emailTemplates.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { notifyUser } from '../services/notificationService.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -73,6 +74,13 @@ export const handleBinanceWebhook = async (req, res) => {
         subject: 'Deposit Confirmed - TradeYield',
         html: depositApprovedTemplate(user.name, depositAmount),
       }).catch((err) => console.error('Deposit webhook email error:', err.message));
+      await notifyUser({
+        userId: transaction.user,
+        type: 'DEPOSIT_APPROVED',
+        title: 'Deposit credited successfully',
+        message: `$${depositAmount.toFixed(2)} USDT has been credited to your investment balance.`,
+        url: '/transactions',
+      });
 
       console.log(`Deposit Webhook Processed: User ${user.email} credited +$${depositAmount} USDT`);
       return res.status(200).json({ returnCode: 'SUCCESS', returnMessage: 'Payment Processed' });
