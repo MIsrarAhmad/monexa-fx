@@ -37,7 +37,7 @@ const LandingPage = () => {
       id: 1,
       title: 'Institutional Multi-Asset Engine',
       subtitle: 'Automated Forex, Gold & Crypto Trading',
-      description: 'Monexafx Exchange provides seamless access to institutional liquidity pools across XAUUSD Gold, major Currency Pairs, and USDT yield engines.',
+      description: 'MonexaFX provides access to market information across XAUUSD Gold and major currency pairs.',
       badge: 'High Performance',
       gradient: 'from-cyan-900/80 via-blue-900/60 to-slate-900',
       border: 'border-cyan-500/40',
@@ -59,7 +59,7 @@ const LandingPage = () => {
       id: 3,
       title: 'Direct $50 Referral Rewards',
       subtitle: 'Flat Direct Sponsor Payouts',
-      description: 'Invite new investors to Monexafx Exchange. Earn a $50 USDT flat cash bonus plus $0.20 daily passive payments for qualifying $300+ deposits.',
+      description: 'Invite new investors to MonexaFX. Earn a $50 USDT flat cash bonus plus $0.20 daily passive payments for qualifying $300+ deposits.',
       badge: 'Network Growth',
       gradient: 'from-purple-950/80 via-slate-900 to-indigo-950/60',
       border: 'border-purple-500/40',
@@ -105,7 +105,7 @@ const LandingPage = () => {
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">
               <img
                 src={LOGO_IMAGE_PATH}
-                alt="Monexafx Exchange Logo"
+                alt="MonexaFX Logo"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -276,7 +276,7 @@ const LandingPage = () => {
       <footer className="mt-auto border-t border-slate-800/80 bg-[#04070d] py-8 px-4 md:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-300">Monexafx Exchange Financial Portal</span>
+            <span className="font-bold text-slate-300">MonexaFX Financial Portal</span>
             <span>&copy; {new Date().getFullYear()} All rights reserved.</span>
           </div>
 

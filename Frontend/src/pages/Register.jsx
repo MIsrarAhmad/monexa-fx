@@ -67,7 +67,7 @@ const Register = () => {
             <div className="w-14 h-14 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
               <img
                 src={LOGO_IMAGE_PATH}
-                alt="Monexafx Exchange Logo"
+                alt="MonexaFX Logo"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = 'none';

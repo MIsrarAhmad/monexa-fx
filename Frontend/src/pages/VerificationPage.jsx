@@ -149,7 +149,7 @@ const VerificationPage = () => {
               <UserCheck className="w-7 h-7 text-cyan-400" /> Identity Verification (KYC)
             </h1>
             <p className="text-xs md:text-sm text-slate-400 mt-1">
-              Verify your identity on Monexafx Exchange to unlock unlimited withdrawals and VIP tier security.
+              Verify your identity with MonexaFX to request USDT TRC20 withdrawals.
             </p>
           </div>
 
@@ -190,7 +190,7 @@ const VerificationPage = () => {
                   </div>
                   <h2 className="text-xl font-bold text-white">Verification Under Audit</h2>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    Your documents have been submitted to Monexafx Exchange compliance team. Verification typically takes 1–12 hours.
+                    Your documents have been submitted to the MonexaFX compliance team. Verification typically takes 1–12 hours.
                   </p>
                   <div className="pt-4 border-t border-slate-800 text-xs text-slate-400">
                     Submitted on: {new Date(kycDetails.submittedAt).toLocaleDateString()}

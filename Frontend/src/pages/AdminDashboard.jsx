@@ -295,7 +295,7 @@ const AdminDashboard = () => {
                   <ShieldCheck className="w-7 h-7 text-purple-400" /> Executive Control Center
                 </h1>
                 <p className="text-xs md:text-sm text-slate-400 mt-1">
-                  Monexafx Exchange live liquidity metrics, user directory, KYC queue, deposit audit, and cashout authorization.
+                  MonexaFX live liquidity metrics, user directory, KYC queue, deposit audit, and cashout authorization.
                 </p>
               </div>
 
