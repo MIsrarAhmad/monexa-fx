@@ -272,27 +272,27 @@ const Sidebar = memo(
           ) : (
             /* USER TABS */
             <>
-              <NavLink to="/dashboard-home" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/dashboard-home" onClick={onCloseSidebar} className={({ isActive }) => `${isActive ? activeClass : inactiveClass} max-md:hidden`}>
                 <Home className="w-5 h-5 text-cyan-400" />
                 <span>Home</span>
               </NavLink>
 
-              <NavLink to="/market" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/market" onClick={onCloseSidebar} className={({ isActive }) => `${isActive ? activeClass : inactiveClass} max-md:hidden`}>
                 <BarChart2 className="w-5 h-5 text-cyan-400" />
                 <span>Market</span>
               </NavLink>
 
-              <NavLink to="/dashboard" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/dashboard" onClick={onCloseSidebar} className={({ isActive }) => `${isActive ? activeClass : inactiveClass} max-md:hidden`}>
                 <Wallet className="w-5 h-5 text-cyan-400" />
                 <span>Assets</span>
               </NavLink>
 
-              <NavLink to="/transactions" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/transactions" onClick={onCloseSidebar} className={({ isActive }) => `${isActive ? activeClass : inactiveClass} max-md:hidden`}>
                 <FileText className="w-5 h-5 text-cyan-400" />
                 <span>Transactions</span>
               </NavLink>
 
-              <NavLink to="/profile" onClick={onCloseSidebar} className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
+              <NavLink to="/profile" onClick={onCloseSidebar} className={({ isActive }) => `${isActive ? activeClass : inactiveClass} max-md:hidden`}>
                 <User className="w-5 h-5 text-cyan-400" />
                 <span>Profile</span>
               </NavLink>
