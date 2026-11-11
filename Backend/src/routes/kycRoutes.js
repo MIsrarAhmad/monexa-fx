@@ -7,7 +7,7 @@ import {
   reviewKyc,
 } from '../controllers/kycController.js';
 import { protect, adminOnly } from '../middleware/authMiddleware.js';
-import { uploadKyc } from '../middleware/uploadKyc.js';
+import { uploadKycDocuments } from '../middleware/uploadKyc.js';
 
 const router = express.Router();
 
@@ -16,11 +16,7 @@ router.get('/me', protect, getMyKycStatus);
 router.post(
   '/submit',
   protect,
-  uploadKyc.fields([
-    { name: 'idFront', maxCount: 1 },
-    { name: 'idBack', maxCount: 1 },
-    { name: 'selfie', maxCount: 1 },
-  ]),
+  uploadKycDocuments,
   submitKyc
 );
 

@@ -63,8 +63,14 @@ const VerificationPage = () => {
   const handleFileChange = (e, setFile, setPreview) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('Image size must be smaller than 5MB');
+      if (file.size > 20 * 1024 * 1024) {
+        showToast('Each image must be 20 MB or smaller.');
+        e.target.value = '';
+        return;
+      }
+      if (file.type && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        showToast('Please use a JPG, PNG, or WebP image. HEIC photos must be converted first.');
+        e.target.value = '';
         return;
       }
       setFile(file);
@@ -85,6 +91,7 @@ const VerificationPage = () => {
 
       const res = await axiosInstance.post('/kyc/submit', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000,
       });
       return res.data;
     },
@@ -93,7 +100,17 @@ const VerificationPage = () => {
       queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
     },
     onError: (err) => {
-      showToast(err.response?.data?.error || 'Failed to submit KYC documents.');
+      let message = err.response?.data?.error;
+      if (err.code === 'ECONNABORTED') {
+        message = 'KYC upload timed out after 3 minutes. Check your connection and retry with smaller photos.';
+      } else if (err.response?.status === 413) {
+        message = message || 'The server rejected the upload because the total request is too large. Reduce the photo sizes and try again.';
+      } else if (!err.response) {
+        message = 'Could not reach the KYC server. Check your internet connection and try again. If it continues, contact support.';
+      } else if (!message) {
+        message = `KYC upload failed (HTTP ${err.response.status}). Please try again or contact support with this status code.`;
+      }
+      showToast(message);
     },
   });
 
@@ -240,7 +257,7 @@ const VerificationPage = () => {
                       <label className="cursor-pointer block border-2 border-dashed border-slate-800 hover:border-cyan-500/60 rounded-xl p-3 text-center bg-slate-900/40 relative overflow-hidden transition">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp"
                           className="hidden"
                           onChange={(e) => handleFileChange(e, setIdFrontFile, setIdFrontPreview)}
                         />
@@ -250,7 +267,7 @@ const VerificationPage = () => {
                           <div className="py-3">
                             <ImageIcon className="w-6 h-6 text-cyan-400 mx-auto mb-1" />
                             <span className="font-bold text-slate-300 block">ID Front Photo</span>
-                            <span className="text-[10px] text-slate-500">JPG/PNG up to 5MB</span>
+                            <span className="text-[10px] text-slate-500">JPG/PNG/WebP up to 20MB</span>
                           </div>
                         )}
                       </label>
@@ -259,7 +276,7 @@ const VerificationPage = () => {
                       <label className="cursor-pointer block border-2 border-dashed border-slate-800 hover:border-cyan-500/60 rounded-xl p-3 text-center bg-slate-900/40 relative overflow-hidden transition">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp"
                           className="hidden"
                           onChange={(e) => handleFileChange(e, setIdBackFile, setIdBackPreview)}
                         />
@@ -269,7 +286,7 @@ const VerificationPage = () => {
                           <div className="py-3">
                             <ImageIcon className="w-6 h-6 text-cyan-400 mx-auto mb-1" />
                             <span className="font-bold text-slate-300 block">ID Back Photo</span>
-                            <span className="text-[10px] text-slate-500">JPG/PNG up to 5MB</span>
+                            <span className="text-[10px] text-slate-500">JPG/PNG/WebP up to 20MB</span>
                           </div>
                         )}
                       </label>
@@ -278,7 +295,7 @@ const VerificationPage = () => {
                       <label className="cursor-pointer block border-2 border-dashed border-slate-800 hover:border-cyan-500/60 rounded-xl p-3 text-center bg-slate-900/40 relative overflow-hidden transition">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp"
                           capture="user"
                           className="hidden"
                           onChange={(e) => handleFileChange(e, setSelfieFile, setSelfiePreview)}
@@ -289,7 +306,7 @@ const VerificationPage = () => {
                           <div className="py-3">
                             <ImageIcon className="w-6 h-6 text-cyan-400 mx-auto mb-1" />
                             <span className="font-bold text-slate-300 block">Selfie Verification</span>
-                            <span className="text-[10px] text-slate-500">JPG/PNG up to 5MB</span>
+                            <span className="text-[10px] text-slate-500">JPG/PNG/WebP up to 20MB</span>
                           </div>
                         )}
                       </label>
@@ -297,10 +314,10 @@ const VerificationPage = () => {
 
                     <button
                       type="submit"
-                      disabled={submitMutation.isLoading}
+                      disabled={submitMutation.isPending}
                       className="btn-neon-primary w-full py-3 rounded-xl font-bold text-xs mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {submitMutation.isLoading ? (
+                      {submitMutation.isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
                           <span>Uploading Documents to Cloudinary...</span>
