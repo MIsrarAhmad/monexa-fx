@@ -170,7 +170,7 @@ const TermsPolicyPage = () => {
                 </div>
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-white block mb-1">2. Minimum Deposit</span>
-                  <span className="text-[11px] text-slate-400">Each deposit must be at least $30 USDT. Daily yield activation requires a main balance of $300 USDT.</span>
+                  <span className="text-[11px] text-slate-400">Each deposit must be at least $300 USDT. Daily yield activates when the main balance is at least $300 USDT.</span>
                 </div>
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-white block mb-1">3. Official Address</span>

@@ -29,7 +29,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
   });
 
   const isKycApproved = kycData?.kycStatus === 'APPROVED';
-  const minRequired = 30;
+  const minRequired = 300;
 
   // Deposit Submit Mutation
   const depositMutation = useMutation({

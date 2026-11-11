@@ -1,8 +1,7 @@
 // Backend/src/controllers/stripeTestController.js
 import Stripe from "stripe";
 import Transaction from "../models/Transaction.js";
-import Wallet from "../models/Wallet.js";
-import { MINIMUM_INITIAL_DEPOSIT } from "../config/constants.js";
+import { MINIMUM_DEPOSIT_AMOUNT } from "../config/constants.js";
 
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -23,23 +22,10 @@ export const createStripeTestSession = async (req, res, next) => {
       });
     }
 
-    // Fetch user's current wallet balance
-    const wallet = await Wallet.findOne({ user: userId });
-    const currentBalance = wallet ? wallet.mainBalance : 0;
-
-    // Calculate dynamic minimum required deposit threshold
-    let minRequired = MINIMUM_INITIAL_DEPOSIT;
-    if (currentBalance > 0 && currentBalance < MINIMUM_INITIAL_DEPOSIT) {
-      minRequired = MINIMUM_INITIAL_DEPOSIT - currentBalance;
-    } else if (currentBalance >= MINIMUM_INITIAL_DEPOSIT) {
-      minRequired = 1; // Subsequent deposits after initial $300 threshold
-    }
-
-    // Enforce dynamic threshold
-    if (!amount || Number(amount) < minRequired) {
+    if (!amount || Number(amount) < MINIMUM_DEPOSIT_AMOUNT) {
       return res.status(400).json({
         success: false,
-        error: `Deposit amount below required threshold. Minimum allowed deposit for your account is $${minRequired} USD/USDT.`,
+        error: `Deposit amount below required minimum. Every deposit must be at least $${MINIMUM_DEPOSIT_AMOUNT} USD/USDT.`,
       });
     }
 

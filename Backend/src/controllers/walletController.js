@@ -2,6 +2,7 @@ import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import {
+  MINIMUM_DEPOSIT_AMOUNT,
   MINIMUM_INITIAL_DEPOSIT,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
   WITHDRAWAL_LOCK_PROFIT_TARGET,
@@ -51,7 +52,7 @@ export const getTransactions = async (req, res, next) => {
   }
 };
 
-// @desc    Calculate dynamic minimum top-up required for current user
+// @desc    Return minimum deposit and current yield threshold status
 // @route   GET /api/wallet/topup-info
 // @access  Private
 export const getTopUpInfo = async (req, res, next) => {
@@ -59,20 +60,12 @@ export const getTopUpInfo = async (req, res, next) => {
     const wallet = await Wallet.findOne({ user: req.user._id });
     const currentBalance = wallet ? wallet.mainBalance : 0;
 
-    let minRequiredDeposit = MINIMUM_INITIAL_DEPOSIT;
-
-    if (currentBalance > 0 && currentBalance < MINIMUM_INITIAL_DEPOSIT) {
-      minRequiredDeposit = MINIMUM_INITIAL_DEPOSIT - currentBalance;
-    } else if (currentBalance >= MINIMUM_INITIAL_DEPOSIT) {
-      minRequiredDeposit = 1;
-    }
-
     res.status(200).json({
       success: true,
       data: {
         currentMainBalance: currentBalance,
         minimumRequiredThreshold: MINIMUM_INITIAL_DEPOSIT,
-        minRequiredDeposit,
+        minRequiredDeposit: MINIMUM_DEPOSIT_AMOUNT,
         isThresholdMet: currentBalance >= MINIMUM_INITIAL_DEPOSIT,
       },
     });
