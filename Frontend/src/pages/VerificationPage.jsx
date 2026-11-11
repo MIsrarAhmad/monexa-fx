@@ -347,15 +347,15 @@ const VerificationPage = () => {
                   </span>
                   <p className="text-[11px] text-slate-400">
                     {kycStatus === 'APPROVED'
-                      ? 'Full verification complete. Unlimited cashout privileges active.'
-                      : 'Tier-1 client status. Submit documents to unlock instant Binance withdrawals.'}
+                      ? 'Full verification complete. USDT TRC20 withdrawal requests are available.'
+                      : 'Submit your documents to request USDT TRC20 withdrawals.'}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs text-slate-400">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Instant Binance Cashouts
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> USDT TRC20 Withdrawals
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Direct Sponsor $50 Bonus Access
