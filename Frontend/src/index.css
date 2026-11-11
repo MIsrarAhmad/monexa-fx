@@ -7,6 +7,12 @@ body {
   overflow-x: hidden;
 }
 
+@media (pointer: coarse) {
+  html {
+    touch-action: manipulation;
+  }
+}
+
 /* Custom Glowing Card Borders & Glassmorphism */
 .neon-card {
   background: rgba(13, 22, 38, 0.75);
