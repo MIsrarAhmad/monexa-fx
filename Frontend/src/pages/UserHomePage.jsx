@@ -40,7 +40,7 @@ const UserHomePage = () => {
         />
 
         <main className="flex-1 min-w-0">
-          {/* 1. Welcome to Dashboard Banner */}
+          {/* 1. Welcome Banner */}
           <div className="relative overflow-hidden rounded-2xl neon-card p-6 mb-6 border border-cyan-500/30">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
@@ -50,9 +50,12 @@ const UserHomePage = () => {
                     Live Session
                   </span>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2">
-                  Welcome to Dashboard, <span className="text-cyan-400">{user?.name || 'Investor'}</span> 👋
+                <h1 className="text-2xl md:text-3xl font-extrabold text-white whitespace-nowrap">
+                  Welcome to MonexaFX
                 </h1>
+                <p className="text-2xl md:text-3xl font-extrabold text-cyan-400 mt-1">
+                  {user?.name || 'Investor'} 👋
+                </p>
                 <p className="text-xs md:text-sm text-slate-400 mt-1">
                   Manage capital deposits, track live market values, and execute instant crypto cashouts.
                 </p>
