@@ -7,6 +7,8 @@ import { sendEmail } from '../services/emailService.js';
 import { depositApprovedTemplate } from '../utils/emailTemplates.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 // @desc    Receive instant payment notification from Binance Pay Webhook
 // @route   POST /api/webhooks/binance
 // @access  Public (Secured via Binance HMAC header validation)
@@ -55,15 +57,15 @@ export const handleBinanceWebhook = async (req, res) => {
 
       const previousBalance = wallet.mainBalance;
       wallet.mainBalance += depositAmount;
-      await wallet.save();
 
-      // If hitting >= $300 for the first time, record timestamp for 24h grace/referral qualification
+      // Start a fresh activation period when the main balance reaches $300.
       if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
-        if (!user.firstDepositAt) {
-          user.firstDepositAt = new Date();
-          await user.save();
-        }
+        user.firstDepositAt = new Date();
+        await user.save();
+        wallet.yieldPaused = false;
+        wallet.nextYieldAt = new Date(Date.now() + DAY_IN_MS);
       }
+      await wallet.save();
 
       // Send confirmation email
       sendEmail({

@@ -11,13 +11,11 @@ import {
   WITHDRAWAL_GRACE_PERIOD_HOURS,
 } from '../config/constants.js';
 
-// Calculate tier floor yield on total withdrawable balance ($300-$399 = $3, $400-$499 = $4, $500-$599 = $5, etc.)
-export const calculateTierYield = (totalWithdrawableBalance) => {
-  if (totalWithdrawableBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-  // Floor down to nearest $100 bracket based on total withdrawable capital
-  const baseTier = Math.floor(totalWithdrawableBalance / 100) * 100;
-  return baseTier * DAILY_YIELD_RATE;
+export const calculateDailyYield = (investmentBalance) => {
+  if (investmentBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
+  return Number((investmentBalance * DAILY_YIELD_RATE).toFixed(2));
 };
 
 // Check and trigger flat $50 direct referral bonuses upon completion of Grace Period 1
@@ -34,12 +32,18 @@ export const processPendingDirectReferrals = async () => {
 
     if (userB && walletB) {
       const isBalanceEligible = walletB.mainBalance >= MINIMUM_INITIAL_DEPOSIT;
-      const completedFirstGracePeriod = userB.hasUsedGracePeriod || (
-        userB.firstDepositAt
-        && Date.now() - new Date(userB.firstDepositAt).getTime() >= WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000
-      );
+      const completedFirstGracePeriod = userB.firstDepositAt
+        && Date.now() - new Date(userB.firstDepositAt).getTime() >= WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000;
+      const withdrawalDuringHoldingPeriod = userB.firstDepositAt
+        ? await Transaction.exists({
+          user: userB._id,
+          type: 'WITHDRAWAL_REQUEST',
+          status: { $in: ['PENDING', 'COMPLETED'] },
+          createdAt: { $gte: userB.firstDepositAt },
+        })
+        : true;
 
-      if (isBalanceEligible && completedFirstGracePeriod) {
+      if (isBalanceEligible && completedFirstGracePeriod && !withdrawalDuringHoldingPeriod) {
         const walletA = await Wallet.findOne({ user: ref.referrer });
 
         if (walletA) {
@@ -57,6 +61,7 @@ export const processPendingDirectReferrals = async () => {
 
           ref.hasTriggeredInitialBonus = true;
           ref.isPassiveEligible = true;
+          ref.lastPassivePayoutAt = new Date();
           ref.totalEarnedFromUser += REFERRAL_DIRECT_BONUS_FLAT;
           await ref.save();
 
@@ -67,41 +72,79 @@ export const processPendingDirectReferrals = async () => {
   }
 };
 
-// Process daily compounding returns across all eligible active accounts
+// Process each user's 24-hour yield cycle and eligible referral payouts.
 export const processDailyYields = async () => {
-  console.log('--- Starting Daily Compounding Yield & Referral Processing ---');
-
   try {
-    // Fetch all user wallets
     const allWallets = await Wallet.find().populate('user');
+    const now = new Date();
+    const legacyWallets = allWallets.filter((wallet) => (
+      wallet.user
+      && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT
+      && !wallet.yieldPaused
+      && !wallet.nextYieldAt
+    ));
+    const lastYieldTransactions = legacyWallets.length
+      ? await Transaction.aggregate([
+        {
+          $match: {
+            user: { $in: legacyWallets.map((wallet) => wallet.user._id) },
+            type: 'DAILY_YIELD',
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: '$user', createdAt: { $first: '$createdAt' } } },
+      ])
+      : [];
+    const lastYieldByUser = new Map(
+      lastYieldTransactions.map((transaction) => [String(transaction._id), transaction.createdAt])
+    );
 
     let processedCount = 0;
     let totalYieldDistributed = 0;
 
     for (const wallet of allWallets) {
-      const firstDepositAt = wallet.user?.firstDepositAt
-        ? new Date(wallet.user.firstDepositAt).getTime()
-        : null;
-      const activationPeriodIsActive = firstDepositAt !== null
-        && Date.now() - firstDepositAt < WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000;
-      if (activationPeriodIsActive) continue;
+      if (!wallet.user) continue;
 
-      // Total withdrawable balance = Principal + Accumulated Yield + Referral Commissions
-      const totalWithdrawable = wallet.mainBalance + wallet.profitBalance + wallet.referralBalance;
+      if (wallet.mainBalance < MINIMUM_INITIAL_DEPOSIT) {
+        if (!wallet.yieldPaused || wallet.nextYieldAt) {
+          wallet.yieldPaused = true;
+          wallet.nextYieldAt = null;
+          await wallet.save();
+        }
+        continue;
+      }
 
-      // Yield is calculated on total withdrawable balance
-      const yieldAmount = calculateTierYield(totalWithdrawable);
+      if (wallet.yieldPaused) {
+        wallet.yieldPaused = false;
+        wallet.nextYieldAt = new Date(now.getTime() + DAY_IN_MS);
+        await wallet.save();
+        continue;
+      }
+
+      if (!wallet.nextYieldAt) {
+        const lastYieldAt = lastYieldByUser.get(String(wallet.user._id));
+        const baseline = lastYieldAt || wallet.user.firstDepositAt;
+        wallet.nextYieldAt = baseline
+          ? new Date(new Date(baseline).getTime() + DAY_IN_MS)
+          : new Date(now.getTime() + DAY_IN_MS);
+        await wallet.save();
+      }
+
+      if (now < wallet.nextYieldAt) continue;
+
+      const yieldAmount = calculateDailyYield(wallet.mainBalance);
 
       if (yieldAmount > 0) {
         wallet.profitBalance += yieldAmount;
         wallet.unwithdrawnProfitCounter += yieldAmount;
+        wallet.nextYieldAt = new Date(now.getTime() + DAY_IN_MS);
         await wallet.save();
 
         await Transaction.create({
           user: wallet.user._id,
           type: 'DAILY_YIELD',
           amount: yieldAmount,
-          description: `Daily 1% compounding yield on $${totalWithdrawable.toFixed(2)} USDT total withdrawable balance base`,
+          description: `Daily 1% yield on $${wallet.mainBalance.toFixed(2)} USDT qualifying investment balance`,
         });
 
         if (wallet.user.firstDepositAt && !wallet.user.hasUsedGracePeriod) {
@@ -120,7 +163,7 @@ export const processDailyYields = async () => {
     const adminIds = await User.distinct('_id', { role: 'admin' });
     const activeReferrals = await Referral.find({
       referrer: { $nin: adminIds },
-      isPassiveEligible: true,
+      hasTriggeredInitialBonus: true,
     });
     let referralBonusCount = 0;
 
@@ -128,6 +171,19 @@ export const processDailyYields = async () => {
       const downstreamWallet = await Wallet.findOne({ user: ref.referredUser });
 
       if (downstreamWallet && downstreamWallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
+        if (!ref.isPassiveEligible) {
+          ref.isPassiveEligible = true;
+          ref.lastPassivePayoutAt = new Date();
+          await ref.save();
+          continue;
+        }
+        if (!ref.lastPassivePayoutAt) {
+          ref.lastPassivePayoutAt = new Date();
+          await ref.save();
+          continue;
+        }
+        if (now.getTime() - new Date(ref.lastPassivePayoutAt).getTime() < DAY_IN_MS) continue;
+
         const referrerWallet = await Wallet.findOne({ user: ref.referrer });
         if (referrerWallet) {
           referrerWallet.referralBalance += REFERRAL_DAILY_PASSIVE_USD;
@@ -142,20 +198,26 @@ export const processDailyYields = async () => {
           });
 
           ref.totalEarnedFromUser += REFERRAL_DAILY_PASSIVE_USD;
+          ref.lastPassivePayoutAt = now;
           await ref.save();
           referralBonusCount++;
         }
       } else {
-        ref.isPassiveEligible = false;
-        await ref.save();
+        if (ref.isPassiveEligible || ref.lastPassivePayoutAt) {
+          ref.isPassiveEligible = false;
+          ref.lastPassivePayoutAt = null;
+          await ref.save();
+        }
       }
     }
 
-    console.log(
-      `--- Yield Processing Complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(
-        2
-      )} USDT), ${referralBonusCount} passive payouts issued ---`
-    );
+    if (processedCount || referralBonusCount) {
+      console.log(
+        `24-hour processing complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(
+          2
+        )} USDT), ${referralBonusCount} passive payouts issued.`
+      );
+    }
     return { processedCount, totalYieldDistributed, referralBonusCount };
   } catch (error) {
     console.error('Error during daily yield calculation:', error.message);

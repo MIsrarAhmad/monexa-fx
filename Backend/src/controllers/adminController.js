@@ -9,6 +9,8 @@ import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 export const getAdminReferralCode = async (req, res, next) => {
   try {
     const admin = await User.findById(req.user._id);
@@ -343,14 +345,16 @@ export const processDepositAction = async (req, res, next) => {
 
     const previousBalance = wallet.mainBalance;
     wallet.mainBalance += depositAmount;
-    await wallet.save();
 
     if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
-      if (user && !user.firstDepositAt) {
+      if (user) {
         user.firstDepositAt = new Date();
         await user.save();
       }
+      wallet.yieldPaused = false;
+      wallet.nextYieldAt = new Date(Date.now() + DAY_IN_MS);
     }
+    await wallet.save();
 
     transaction.status = 'COMPLETED';
     await transaction.save();
@@ -416,9 +420,33 @@ export const processWithdrawalAction = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'User wallet record not found' });
     }
 
-    // Action === 'REJECT' -> Refund reserved funds back to user profit balance
+    // Action === 'REJECT' -> Restore the reserved wallet balances
     if (action === 'REJECT') {
-      wallet.profitBalance += transaction.amount;
+      const previousMainBalance = wallet.mainBalance;
+      const hasReservationBreakdown = transaction.reservedProfitBalance
+        + transaction.reservedReferralBalance
+        + transaction.reservedMainBalance > 0;
+
+      if (hasReservationBreakdown) {
+        wallet.profitBalance += transaction.reservedProfitBalance;
+        wallet.referralBalance += transaction.reservedReferralBalance;
+        wallet.mainBalance += transaction.reservedMainBalance;
+      } else {
+        wallet.profitBalance += transaction.amount;
+      }
+
+      if (previousMainBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
+        const user = await User.findById(transaction.user);
+        if (user) {
+          user.firstDepositAt = new Date();
+          await user.save();
+        }
+      }
+
+      if (wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT && wallet.yieldPaused) {
+        wallet.yieldPaused = false;
+        wallet.nextYieldAt = new Date(Date.now() + DAY_IN_MS);
+      }
       await wallet.save();
 
       transaction.status = 'REJECTED';
@@ -426,7 +454,7 @@ export const processWithdrawalAction = async (req, res, next) => {
 
       return res.status(200).json({
         success: true,
-        message: 'Withdrawal rejected. Reserved funds refunded back to user profit balance.',
+        message: 'Withdrawal rejected. Reserved funds have been restored to the wallet.',
         data: transaction,
       });
     }
@@ -435,6 +463,11 @@ export const processWithdrawalAction = async (req, res, next) => {
     wallet.unwithdrawnProfitCounter = 0;
     wallet.lastWithdrawalAt = new Date();
     await wallet.save();
+    const user = await User.findById(transaction.user);
+    if (user) {
+      user.firstDepositAt = new Date();
+      await user.save();
+    }
 
     transaction.status = 'COMPLETED';
     if (payoutTxHash) {

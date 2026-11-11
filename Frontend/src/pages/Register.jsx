@@ -80,7 +80,7 @@ const Register = () => {
               Join Monexa<span className="text-cyan-400">Fx</span>
             </h1>
           </Link>
-          <p className="text-xs text-slate-400 mt-1">Start compounding daily trading profits</p>
+          <p className="text-xs text-slate-400 mt-1">Manage your investment account</p>
         </div>
 
         {/* Error Alert Box */}

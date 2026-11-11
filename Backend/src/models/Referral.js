@@ -26,6 +26,10 @@ const referralSchema = new mongoose.Schema(
       type: Number,
       default: 0, // Aggregate earned rewards from this specific referral link
     },
+    lastPassivePayoutAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

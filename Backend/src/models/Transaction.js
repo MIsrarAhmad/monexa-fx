@@ -34,6 +34,18 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0, // Calculated 20% fee amount
     },
+    reservedProfitBalance: {
+      type: Number,
+      default: 0,
+    },
+    reservedReferralBalance: {
+      type: Number,
+      default: 0,
+    },
+    reservedMainBalance: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: String,
       enum: ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED'],

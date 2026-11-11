@@ -49,7 +49,7 @@ export const createStripeTestSession = async (req, res, next) => {
             currency: "usd",
             product_data: {
               name: "TradeYield Test Capital Deposit",
-              description: "Activates/expands daily 1% yield compounding account.",
+              description: "Deposit for an account eligible for the stated daily investment return.",
             },
             unit_amount: Math.round(Number(amount) * 100),
           },

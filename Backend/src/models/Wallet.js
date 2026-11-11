@@ -15,7 +15,7 @@ const walletSchema = new mongoose.Schema(
     },
     profitBalance: {
       type: Number,
-      default: 0, // Accrued daily compounding returns
+      default: 0, // Accrued daily returns
     },
     unwithdrawnProfitCounter: {
       type: Number,
@@ -36,6 +36,14 @@ const walletSchema = new mongoose.Schema(
     lastWithdrawalAt: {
       type: Date,
       default: null, // Tracks exact timestamp of the user's most recent withdrawal
+    },
+    nextYieldAt: {
+      type: Date,
+      default: null,
+    },
+    yieldPaused: {
+      type: Boolean,
+      default: false,
     },
   },
   {

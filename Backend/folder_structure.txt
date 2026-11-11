@@ -37,7 +37,7 @@ crypto-platform-backend/
 │   │   └── validateRequest.js      # Input validation sanitizers
 │   │
 │   ├── services/           # Heavy Business & Financial Calculations
-│   │   ├── yieldService.js         # Tiered 1% compounding math ($300–$399 base = $3, $400–$499 base = $4)
+│   │   ├── yieldService.js         # 1% of qualifying main investment balance, paid every 24 hours
 │   │   ├── referralService.js      # Instant 50% referral yield & $0.20 daily passive distributor
 │   │   └── binancePayService.js    # Calls Binance `/v2/order` & `/payout` endpoints
 │   │

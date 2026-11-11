@@ -46,9 +46,9 @@ const LandingPage = () => {
     },
     {
       id: 2,
-      title: 'Guaranteed 1% Daily Yield',
+      title: 'Stated 1% Daily Yield',
       subtitle: '24-Hour Automated Ledger Activation',
-      description: 'Participate in our structured capital program. Enjoy fixed daily compounding yield credited directly after a 24-hour setup period.',
+      description: 'The stated return is 1% of qualifying main investment balance every 24 hours after activation. It is not compounded and pauses below the $300 minimum balance.',
       badge: 'Promised Return',
       gradient: 'from-emerald-950/80 via-slate-900 to-teal-950/60',
       border: 'border-emerald-500/40',
@@ -255,7 +255,7 @@ const LandingPage = () => {
           <div className="neon-card p-5 rounded-2xl border border-cyan-500/20">
             <DollarSign className="w-8 h-8 text-cyan-400 mb-3" />
             <h3 className="text-base font-bold text-white mb-1">1% Daily Returns</h3>
-            <p className="text-xs text-slate-400">Fixed 1% daily yield credited directly to your profit ledger.</p>
+            <p className="text-xs text-slate-400">Stated 1% return on qualifying main investment balance, credited every 24 hours after activation.</p>
           </div>
           <div className="neon-card p-5 rounded-2xl border border-cyan-500/20">
             <Lock className="w-8 h-8 text-emerald-400 mb-3" />

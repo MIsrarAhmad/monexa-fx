@@ -96,7 +96,7 @@ const TermsPolicyPage = () => {
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Daily Return</td>
-                      <td className="py-2.5 px-3 text-emerald-400 font-bold">1% of qualifying investment</td>
+                      <td className="py-2.5 px-3 text-emerald-400 font-bold">1% of qualifying main investment balance; not compounded</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Activation Period</td>
@@ -115,12 +115,12 @@ const TermsPolicyPage = () => {
                       <td className="py-2.5 px-3 text-amber-400 font-semibold">USDT TRC20 Wallet</td>
                     </tr>
                     <tr>
-                      <td className="py-2.5 px-3 font-bold text-white">Minimum Account Balance</td>
+                      <td className="py-2.5 px-3 font-bold text-white">Minimum Main Investment Balance</td>
                       <td className="py-2.5 px-3 text-white font-bold">$300</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Profit Payment</td>
-                      <td className="py-2.5 px-3 text-emerald-400 font-bold">Daily, according to the investment program</td>
+                      <td className="py-2.5 px-3 text-emerald-400 font-bold">Every 24 hours after activation, while eligible</td>
                     </tr>
                   </tbody>
                 </table>
@@ -135,16 +135,16 @@ const TermsPolicyPage = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <span>2. A 24-hour activation period begins after successful deposit confirmation.</span>
+                  <span>2. After the deposit is verified and credited, a 24-hour activation period begins.</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <span>3. The stated daily return is 1% of the qualifying investment amount.</span>
+                  <span>3. The stated daily return is 1% of the qualifying main investment balance and is not compounded.</span>
                 </div>
                 <div className="flex items-start gap-2 text-amber-300">
                   <PauseCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <span>
-                    <strong>4. Minimum Balance Rule:</strong> If the account balance falls below $300, daily profit payments are paused until the balance is restored to the required minimum.
+                    <strong>4. Minimum Balance Rule:</strong> If the main investment balance falls below $300, daily payments pause. When it is restored to at least $300, a new 24-hour period begins. No payments are backdated for the paused period.
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -181,8 +181,8 @@ const TermsPolicyPage = () => {
                   <span className="text-[11px] text-slate-400">Users must submit their transaction ID (TXID).</span>
                 </div>
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-                  <span className="font-bold text-white block mb-1">5. Blockchain Confirmation</span>
-                  <span className="text-[11px] text-slate-400">Deposits are credited after successful blockchain confirmation.</span>
+                  <span className="font-bold text-white block mb-1">5. Payment Verification</span>
+                  <span className="text-[11px] text-slate-400">Users submit the transaction ID and payment proof. Deposits are credited after admin review and approval; blockchain verification is not automatic.</span>
                 </div>
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-white block mb-1">6. Unsupported Networks</span>
@@ -197,7 +197,7 @@ const TermsPolicyPage = () => {
                 <ArrowUpRight className="w-5 h-5 text-amber-400" /> 3. Withdrawal Policy
               </h3>
               <p className="text-slate-300 leading-relaxed mb-4">
-                <strong>Title:</strong> Fast & Convenient Withdrawals<br />
+                <strong>Title:</strong> Admin-Reviewed Withdrawals<br />
                 MONEXA FX provides USDT withdrawals through the TRON (TRC20) network. Withdrawal requests are processed through the platform's designated USDT TRC20 wallet.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-slate-300 mb-4">
@@ -211,7 +211,7 @@ const TermsPolicyPage = () => {
                 </div>
                 <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-amber-400 block mb-1">3. Processing Time</span>
-                  <span className="text-[11px] text-slate-400">The stated processing time is 1–30 minutes.</span>
+                  <span className="text-[11px] text-slate-400">Requests enter the admin review queue. Processing depends on verification and payout review; no fixed completion time is guaranteed.</span>
                 </div>
                 <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-amber-400 block mb-1">4. Wallet Address</span>
@@ -269,7 +269,7 @@ const TermsPolicyPage = () => {
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Bonus Activation</td>
-                      <td className="py-2.5 px-3 text-slate-300">After 24-hour activation</td>
+                      <td className="py-2.5 px-3 text-slate-300">After the 24-hour holding period</td>
                     </tr>
                   </tbody>
                 </table>
@@ -277,10 +277,10 @@ const TermsPolicyPage = () => {
 
               <div className="space-y-2 text-slate-300 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
                 <p className="font-bold text-white text-xs mb-1">Generation Rules:</p>
-                <p>1. <strong>First Generation:</strong> The direct referrer receives a $50 one-time bonus and a $0.20 daily reward.</p>
+                <p>1. <strong>First Generation:</strong> The direct referrer receives a $50 one-time bonus after the referred investor maintains at least $300 for 24 hours without a withdrawal. The $0.20 reward starts after qualification and is paid every 24 hours while eligible.</p>
                 <p>2. <strong>Second Generation:</strong> Only the Second Generation investor's direct referrer receives the $50 bonus and $0.20 daily reward.</p>
                 <p>3. <strong>Generation Exclusion:</strong> First Generation users do not receive rewards from Second Generation investors.</p>
-                <p>4. <strong>Direct Qualification:</strong> Referral rewards are provided only for qualifying direct referrals.</p>
+                <p>4. <strong>Direct Qualification:</strong> Referral rewards are provided only for qualifying direct referrals. If the referred investor's main balance drops below $300, recurring rewards pause and restart after another 24-hour qualifying period once restored.</p>
                 <p className="text-amber-400 font-semibold text-[11px]">5. Note: The previous $25 bonus has been completely removed.</p>
               </div>
             </div>

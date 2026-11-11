@@ -3,6 +3,7 @@ import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import {
+  MINIMUM_INITIAL_DEPOSIT,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
   WITHDRAWAL_LOCK_PROFIT_TARGET,
   WITHDRAWAL_FEE_PERCENTAGE,
@@ -57,6 +58,7 @@ export const requestWithdrawal = async (req, res, next) => {
     const priorWithdrawalCount = await Transaction.countDocuments({
       user: req.user._id,
       type: 'WITHDRAWAL_REQUEST',
+      status: { $in: ['PENDING', 'COMPLETED'] },
     });
 
     let isInGracePeriod = false;
@@ -87,25 +89,38 @@ export const requestWithdrawal = async (req, res, next) => {
 
     // Instant Balance Reservation (Prevents double spending while under admin review)
     let remainingToDeduct = withdrawAmount;
+    let reservedProfitBalance = 0;
+    let reservedReferralBalance = 0;
+    let reservedMainBalance = 0;
 
     if (wallet.profitBalance >= remainingToDeduct) {
+      reservedProfitBalance = remainingToDeduct;
       wallet.profitBalance -= remainingToDeduct;
       remainingToDeduct = 0;
     } else {
       remainingToDeduct -= wallet.profitBalance;
+      reservedProfitBalance = wallet.profitBalance;
       wallet.profitBalance = 0;
     }
 
     if (remainingToDeduct > 0 && wallet.referralBalance >= remainingToDeduct) {
+      reservedReferralBalance = remainingToDeduct;
       wallet.referralBalance -= remainingToDeduct;
       remainingToDeduct = 0;
     } else if (remainingToDeduct > 0) {
       remainingToDeduct -= wallet.referralBalance;
+      reservedReferralBalance = wallet.referralBalance;
       wallet.referralBalance = 0;
     }
 
     if (remainingToDeduct > 0) {
+      reservedMainBalance = remainingToDeduct;
       wallet.mainBalance -= remainingToDeduct;
+    }
+
+    if (wallet.mainBalance < MINIMUM_INITIAL_DEPOSIT) {
+      wallet.yieldPaused = true;
+      wallet.nextYieldAt = null;
     }
 
     wallet.trc20Address = targetAccount;
@@ -116,6 +131,9 @@ export const requestWithdrawal = async (req, res, next) => {
       user: req.user._id,
       type: 'WITHDRAWAL_REQUEST',
       amount: withdrawAmount,
+      reservedProfitBalance,
+      reservedReferralBalance,
+      reservedMainBalance,
       feeDeducted,
       netAmount,
       paymentMethod: 'TRC20',

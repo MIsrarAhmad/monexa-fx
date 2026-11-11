@@ -130,7 +130,7 @@ const AboutUsPage = () => {
                   <DollarSign className="w-5 h-5 text-cyan-400" /> Investment Program
                 </h3>
                 <p className="text-slate-300 leading-relaxed mb-3">
-                  MONEXA FX offers a Professional Trading Investment Program with a stated daily return of 1% on qualifying investments.
+                  MONEXA FX offers a Professional Trading Investment Program with a stated daily return of 1% on qualifying main investment balance. Returns are not compounded and are credited in 24-hour cycles after activation.
                 </p>
                 <div className="space-y-2 text-slate-300">
                   <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ const AboutUsPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span><strong>Stated Daily Return:</strong> 1%</span>
+                    <span><strong>Stated Daily Return:</strong> 1% of qualifying main investment balance (not compounded)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -151,7 +151,7 @@ const AboutUsPage = () => {
                   </div>
                 </div>
                 <p className="text-amber-400 text-[11px] mt-3">
-                  * If the account balance falls below $300, daily profit payments are paused until the required minimum balance is restored.
+                  * If the main investment balance falls below $300, payments pause. Restoring it starts a new 24-hour period; paused payments are not backdated.
                 </p>
               </div>
 
@@ -165,7 +165,7 @@ const AboutUsPage = () => {
                 <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-slate-300 space-y-1">
                   <div>• <strong>Accepted Currency:</strong> USDT</div>
                   <div>• <strong>Supported Network:</strong> TRC20</div>
-                  <div>• <strong>Deposit Confirmation:</strong> Blockchain transaction verification</div>
+                  <div>• <strong>Deposit Confirmation:</strong> TXID and proof reviewed by admin; credit occurs after approval</div>
                   <div>• <strong>Transaction ID (TXID):</strong> Required for deposit verification</div>
                 </div>
               </div>
@@ -202,7 +202,7 @@ const AboutUsPage = () => {
                 </div>
                 <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-amber-400 block mb-1">6. Processing Speed</span>
-                  <span className="text-[11px] text-slate-400">Stated withdrawal processing time is 1–30 minutes, subject to verification.</span>
+                  <span className="text-[11px] text-slate-400">Requests enter the admin review queue. Processing time depends on verification and payout review; no fixed completion time is guaranteed.</span>
                 </div>
               </div>
             </div>

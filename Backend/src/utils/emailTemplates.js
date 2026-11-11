@@ -79,7 +79,7 @@ export const depositApprovedTemplate = (name, amount) => {
       <p style="margin: 0;"><strong>Status:</strong> <span style="color: #22C55E; font-weight: bold;">APPROVED</span></p>
       <p style="margin: 5px 0 0 0;"><strong>Active Balance:</strong> $${amount} USDT</p>
     </div>
-    <p>Your daily 1% compounding returns will activate after the 24-hour setup period and credit automatically every 24 hours.</p>
+    <p>Your stated daily return is 1% of your qualifying investment balance, beginning after 24 hours and then credited every 24 hours. Returns are not compounded. Payments pause if your main investment balance falls below $300; restoring it starts a new 24-hour period, with no backdated payments.</p>
   `;
   return baseLayout(content);
 };
@@ -96,7 +96,7 @@ export const withdrawalRequestedTemplate = (name, amount, fee, netAmount, trc20A
       <p style="margin: 5px 0 0 0; font-size: 16px;"><strong>Net Payout Amount:</strong> <span style="color: #00F0FF; font-weight: bold;">$${netAmount} USDT</span></p>
       <p style="margin: 5px 0 0 0;"><strong>USDT TRC20 Destination Address:</strong> ${escapeHtml(trc20Address)}</p>
     </div>
-    <p>Our admin queue is reviewing your payment. You will receive an email once the funds are transferred (stated processing time: 1–30 minutes).</p>
+    <p>Your request is in the admin review queue. Processing time depends on verification and payout review; no fixed completion time is guaranteed.</p>
   `;
   return baseLayout(content);
 };

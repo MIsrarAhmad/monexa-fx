@@ -89,6 +89,7 @@ export const getWithdrawalInfo = async (req, res, next) => {
     const priorWithdrawalCount = await Transaction.countDocuments({
       user: req.user._id,
       type: 'WITHDRAWAL_REQUEST',
+      status: { $in: ['PENDING', 'COMPLETED'] },
     });
 
     let isInGracePeriod = false;

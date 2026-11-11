@@ -201,7 +201,7 @@ const ReferralsPage = () => {
                   <div>
                     <span className="font-bold text-white block text-xs">24-Hour Holding Period</span>
                     <span className="text-slate-400 text-[11px]">
-                      The referred user must maintain their deposit without making a withdrawal for <strong>at least 24 hours</strong> before the $50 bonus is credited.
+                      The referred user must maintain a main balance of at least <strong>$300 USDT</strong> and make no withdrawal for <strong>at least 24 hours</strong> before the $50 bonus is credited.
                     </span>
                   </div>
                 </div>
@@ -213,7 +213,7 @@ const ReferralsPage = () => {
                   <div>
                     <span className="font-bold text-white block text-xs">Daily $0.20 Reward Credit</span>
                     <span className="text-slate-400 text-[11px]">
-                      Once qualified, you automatically receive <strong>$0.20 USDT every 24 hours</strong> for as long as your direct referral maintains an active investment.
+                      The first <strong>$0.20 USDT</strong> reward is credited 24 hours after qualification, then every 24 hours while the referral's main balance remains at least $300. If it falls below $300, rewards pause and restart after another 24-hour qualifying period.
                     </span>
                   </div>
                 </div>

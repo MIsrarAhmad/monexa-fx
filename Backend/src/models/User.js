@@ -62,6 +62,7 @@ const userSchema = new mongoose.Schema(
     firstDepositAt: {
       type: Date,
       default: null,
+      // Start of the current qualifying 24-hour activation/holding period.
     },
     isActive: {
       type: Boolean,
