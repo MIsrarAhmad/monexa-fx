@@ -146,7 +146,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
             <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
             <h4 className="text-sm font-bold text-white">Withdrawal Locked</h4>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Your initial grace period has expired. Accumulate at least{' '}
+              Your 24-hour initial grace period has expired. Accumulate at least{' '}
               <strong className="text-amber-300">$50.00 USDT</strong> in unwithdrawn daily profit to unlock cashouts.
             </p>
             <div className="p-2 bg-slate-900 rounded-lg text-xs font-mono text-cyan-400 border border-slate-800">

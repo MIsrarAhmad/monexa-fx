@@ -5,6 +5,7 @@ import Transaction from '../models/Transaction.js';
 import { generateBinanceSignature } from '../config/binance.js';
 import { sendEmail } from '../services/emailService.js';
 import { depositApprovedTemplate } from '../utils/emailTemplates.js';
+import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 
 // @desc    Receive instant payment notification from Binance Pay Webhook
 // @route   POST /api/webhooks/binance
@@ -52,12 +53,16 @@ export const handleBinanceWebhook = async (req, res) => {
       const wallet = await Wallet.findOne({ user: transaction.user });
       const user = await User.findById(transaction.user);
 
+      const previousBalance = wallet.mainBalance;
       wallet.mainBalance += depositAmount;
       await wallet.save();
 
-      if (!user.firstDepositAt) {
-        user.firstDepositAt = new Date();
-        await user.save();
+      // If hitting >= $300 for the first time, record timestamp for 24h grace/referral qualification
+      if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
+        if (!user.firstDepositAt) {
+          user.firstDepositAt = new Date();
+          await user.save();
+        }
       }
 
       // Send confirmation email

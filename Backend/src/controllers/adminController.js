@@ -341,12 +341,15 @@ export const processDepositAction = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'User wallet record not found' });
     }
 
+    const previousBalance = wallet.mainBalance;
     wallet.mainBalance += depositAmount;
     await wallet.save();
 
-    if (user && !user.firstDepositAt) {
-      user.firstDepositAt = new Date();
-      await user.save();
+    if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
+      if (user && !user.firstDepositAt) {
+        user.firstDepositAt = new Date();
+        await user.save();
+      }
     }
 
     transaction.status = 'COMPLETED';

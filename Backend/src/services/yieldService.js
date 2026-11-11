@@ -8,13 +8,16 @@ import {
   REFERRAL_DIRECT_BONUS_FLAT,
   REFERRAL_DAILY_PASSIVE_USD,
   MINIMUM_INITIAL_DEPOSIT,
-  MINIMUM_YIELD_BALANCE,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
 } from '../config/constants.js';
 
-export const calculateInvestmentYield = (investmentBalance) => {
-  if (investmentBalance < MINIMUM_YIELD_BALANCE) return 0;
-  return Number((investmentBalance * DAILY_YIELD_RATE).toFixed(2));
+// Calculate tier floor yield on total withdrawable balance ($300-$399 = $3, $400-$499 = $4, $500-$599 = $5, etc.)
+export const calculateTierYield = (totalWithdrawableBalance) => {
+  if (totalWithdrawableBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
+
+  // Floor down to nearest $100 bracket based on total withdrawable capital
+  const baseTier = Math.floor(totalWithdrawableBalance / 100) * 100;
+  return baseTier * DAILY_YIELD_RATE;
 };
 
 // Check and trigger flat $50 direct referral bonuses upon completion of Grace Period 1
@@ -64,9 +67,9 @@ export const processPendingDirectReferrals = async () => {
   }
 };
 
-// Process testing yields across all eligible active accounts
+// Process daily compounding returns across all eligible active accounts
 export const processDailyYields = async () => {
-  console.log('--- Starting Testing Yield Processing ---');
+  console.log('--- Starting Daily Compounding Yield & Referral Processing ---');
 
   try {
     // Fetch all user wallets
@@ -83,7 +86,11 @@ export const processDailyYields = async () => {
         && Date.now() - firstDepositAt < WITHDRAWAL_GRACE_PERIOD_HOURS * 60 * 60 * 1000;
       if (activationPeriodIsActive) continue;
 
-      const yieldAmount = calculateInvestmentYield(wallet.mainBalance);
+      // Total withdrawable balance = Principal + Accumulated Yield + Referral Commissions
+      const totalWithdrawable = wallet.mainBalance + wallet.profitBalance + wallet.referralBalance;
+
+      // Yield is calculated on total withdrawable balance
+      const yieldAmount = calculateTierYield(totalWithdrawable);
 
       if (yieldAmount > 0) {
         wallet.profitBalance += yieldAmount;
@@ -94,7 +101,7 @@ export const processDailyYields = async () => {
           user: wallet.user._id,
           type: 'DAILY_YIELD',
           amount: yieldAmount,
-          description: `Testing 1% yield on $${wallet.mainBalance.toFixed(2)} USDT investment balance`,
+          description: `Daily 1% compounding yield on $${totalWithdrawable.toFixed(2)} USDT total withdrawable balance base`,
         });
 
         if (wallet.user.firstDepositAt && !wallet.user.hasUsedGracePeriod) {
@@ -109,18 +116,7 @@ export const processDailyYields = async () => {
     // Evaluate and payout qualifying $50 direct referral bonuses
     await processPendingDirectReferrals();
 
-    console.log(
-      `--- Testing Yield Processing Complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(2)} USDT) ---`
-    );
-    return { processedCount, totalYieldDistributed };
-  } catch (error) {
-    console.error('Error during testing yield calculation:', error.message);
-    throw error;
-  }
-};
-
-export const processDailyPassiveReferrals = async () => {
-  try {
+    // Process $0.20 daily passive referral payouts for active nodes
     const adminIds = await User.distinct('_id', { role: 'admin' });
     const activeReferrals = await Referral.find({
       referrer: { $nin: adminIds },
@@ -155,10 +151,14 @@ export const processDailyPassiveReferrals = async () => {
       }
     }
 
-    console.log(`Daily passive referral processing complete: ${referralBonusCount} payouts issued.`);
-    return { referralBonusCount };
+    console.log(
+      `--- Yield Processing Complete: ${processedCount} users paid ($${totalYieldDistributed.toFixed(
+        2
+      )} USDT), ${referralBonusCount} passive payouts issued ---`
+    );
+    return { processedCount, totalYieldDistributed, referralBonusCount };
   } catch (error) {
-    console.error('Error during daily passive referral processing:', error.message);
+    console.error('Error during daily yield calculation:', error.message);
     throw error;
   }
 };
