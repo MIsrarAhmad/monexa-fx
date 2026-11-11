@@ -54,17 +54,18 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
 
         {/* Right chat link, notifications & user info */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* MonexaFX Chat */}
+          {/* Chat link */}
           <a
             href={MONEXAFX_CHAT_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="relative p-1.5 sm:p-2 rounded-xl bg-cyan-950/80 text-cyan-300 hover:text-white hover:bg-cyan-900/80 border border-cyan-700/50 transition flex items-center gap-1.5 text-xs font-bold shadow-md shadow-cyan-950/40"
-            title="Open MonexaFX Chat"
+            title="Open chat"
+            aria-label="Open chat"
           >
             <MessageCircle className="w-4 h-4 text-cyan-400" />
-            <span className="whitespace-nowrap text-[10px] sm:text-xs">MonexaFX Chat</span>
-            <ExternalLink className="w-3 h-3 text-cyan-400/70" />
+            <span className="hidden sm:inline">Chat</span>
+            <ExternalLink className="hidden sm:inline w-3 h-3 text-cyan-400/70" />
           </a>
 
           <NotificationCenter />
