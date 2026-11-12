@@ -11,6 +11,9 @@ import {
   toggleMaintenanceStatus,
   permanentlyDeleteUser,
   getAdminReferralCode,
+  getAdminFinancialLedgerUsers,
+  getAdminUserFinancialLedger,
+  getAdminReferralRankings,
   createAnnouncement,
 } from '../controllers/adminController.js';
 
@@ -23,6 +26,9 @@ router.get('/maintenance', getMaintenanceStatus);
 router.use(protect, adminOnly);
 router.get('/stats', getAdminStats);
 router.get('/referral-code', getAdminReferralCode);
+router.get('/financial-ledger/users', getAdminFinancialLedgerUsers);
+router.get('/financial-ledger/users/:userId', getAdminUserFinancialLedger);
+router.get('/referral-rankings', getAdminReferralRankings);
 router.post('/announcements', createAnnouncement);
 router.delete('/users/:userId', permanentlyDeleteUser);
 router.get('/withdrawals/pending', getPendingWithdrawals);

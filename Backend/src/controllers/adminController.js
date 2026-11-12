@@ -219,6 +219,282 @@ export const getAdminStats = async (req, res, next) => {
   }
 };
 
+const getUserFinancialTotals = async (userIds) => {
+  if (!userIds.length) return new Map();
+
+  const totals = await Transaction.aggregate([
+    {
+      $match: {
+        user: { $in: userIds },
+        $or: [
+          { type: 'DEPOSIT', status: 'COMPLETED' },
+          { type: 'DAILY_YIELD' },
+          { type: { $in: ['REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE'] } },
+          { type: 'WITHDRAWAL_REQUEST', status: 'COMPLETED' },
+        ],
+      },
+    },
+    {
+      $group: {
+        _id: '$user',
+        totalDeposited: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ['$type', 'DEPOSIT'] }, { $eq: ['$status', 'COMPLETED'] }] },
+              '$amount',
+              0,
+            ],
+          },
+        },
+        totalProfit: {
+          $sum: { $cond: [{ $eq: ['$type', 'DAILY_YIELD'] }, '$amount', 0] },
+        },
+        totalReferralEarned: {
+          $sum: {
+            $cond: [
+              { $in: ['$type', ['REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE']] },
+              '$amount',
+              0,
+            ],
+          },
+        },
+        totalWithdrawn: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$type', 'WITHDRAWAL_REQUEST'] },
+                  { $eq: ['$status', 'COMPLETED'] },
+                ],
+              },
+              '$amount',
+              0,
+            ],
+          },
+        },
+        totalPaidOut: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$type', 'WITHDRAWAL_REQUEST'] },
+                  { $eq: ['$status', 'COMPLETED'] },
+                ],
+              },
+              '$netAmount',
+              0,
+            ],
+          },
+        },
+        totalWithdrawalFees: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$type', 'WITHDRAWAL_REQUEST'] },
+                  { $eq: ['$status', 'COMPLETED'] },
+                ],
+              },
+              '$feeDeducted',
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  return new Map(totals.map((entry) => [entry._id.toString(), entry]));
+};
+
+// @route GET /api/admin/financial-ledger/users
+// @access Private/Admin
+export const getAdminFinancialLedgerUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({ role: 'user' }).select('_id name email createdAt').sort({ name: 1 }).lean();
+    const userIds = users.map((user) => user._id);
+    const [wallets, totalsByUser] = await Promise.all([
+      Wallet.find({ user: { $in: userIds } }).select('user mainBalance profitBalance referralBalance').lean(),
+      getUserFinancialTotals(userIds),
+    ]);
+    const walletsByUser = new Map(wallets.map((wallet) => [wallet.user.toString(), wallet]));
+
+    res.status(200).json({
+      success: true,
+      data: users.map((user) => {
+        const wallet = walletsByUser.get(user._id.toString());
+        const totals = totalsByUser.get(user._id.toString()) || {};
+        return {
+          userId: user._id,
+          name: user.name,
+          email: user.email,
+          joinedAt: user.createdAt,
+          totalDeposited: totals.totalDeposited || 0,
+          totalProfit: totals.totalProfit || 0,
+          totalReferralEarned: totals.totalReferralEarned || 0,
+          totalWithdrawn: totals.totalWithdrawn || 0,
+          totalPaidOut: totals.totalPaidOut || 0,
+          totalWithdrawalFees: totals.totalWithdrawalFees || 0,
+          balances: {
+            investment: wallet?.mainBalance || 0,
+            profit: wallet?.profitBalance || 0,
+            referral: wallet?.referralBalance || 0,
+          },
+        };
+      }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @route GET /api/admin/financial-ledger/users/:userId
+// @access Private/Admin
+export const getAdminUserFinancialLedger = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+    }
+
+    const user = await User.findOne({ _id: userId, role: 'user' })
+      .select('_id name email createdAt')
+      .lean();
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const pageSize = 100;
+    const [wallet, totalsByUser, transactionCount, transactions] = await Promise.all([
+      Wallet.findOne({ user: user._id }).select('mainBalance profitBalance referralBalance').lean(),
+      getUserFinancialTotals([user._id]),
+      Transaction.countDocuments({ user: user._id }),
+      Transaction.find({ user: user._id })
+        .select('type amount netAmount feeDeducted status description txHash paymentMethod createdAt')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .lean(),
+    ]);
+    const totals = totalsByUser.get(user._id.toString()) || {};
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user,
+        summary: {
+          totalDeposited: totals.totalDeposited || 0,
+          totalProfit: totals.totalProfit || 0,
+          totalReferralEarned: totals.totalReferralEarned || 0,
+          totalWithdrawn: totals.totalWithdrawn || 0,
+          totalPaidOut: totals.totalPaidOut || 0,
+          totalWithdrawalFees: totals.totalWithdrawalFees || 0,
+          balances: {
+            investment: wallet?.mainBalance || 0,
+            profit: wallet?.profitBalance || 0,
+            referral: wallet?.referralBalance || 0,
+          },
+        },
+        transactions,
+        pagination: {
+          page,
+          pageSize,
+          total: transactionCount,
+          pages: Math.ceil(transactionCount / pageSize),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @route GET /api/admin/referral-rankings
+// @access Private/Admin
+export const getAdminReferralRankings = async (req, res, next) => {
+  try {
+    const referrals = await Referral.find()
+      .populate('referrer', 'name email role')
+      .populate('referredUser', 'name email createdAt')
+      .lean();
+    const referredUserIds = referrals
+      .map((referral) => referral.referredUser?._id)
+      .filter(Boolean);
+    const depositTotals = referredUserIds.length
+      ? await Transaction.aggregate([
+        {
+          $match: {
+            user: { $in: referredUserIds },
+            type: 'DEPOSIT',
+            status: 'COMPLETED',
+          },
+        },
+        {
+          $group: {
+            _id: '$user',
+            totalDeposited: { $sum: '$amount' },
+          },
+        },
+      ])
+      : [];
+    const depositsByUser = new Map(
+      depositTotals.map((entry) => [entry._id.toString(), entry.totalDeposited])
+    );
+    const rankingsByReferrer = new Map();
+
+    for (const referral of referrals) {
+      const referrer = referral.referrer;
+      const referredUser = referral.referredUser;
+      if (!referrer || referrer.role !== 'user' || !referredUser) continue;
+
+      const referrerId = referrer._id.toString();
+      let ranking = rankingsByReferrer.get(referrerId);
+      if (!ranking) {
+        ranking = {
+          userId: referrer._id,
+          name: referrer.name,
+          email: referrer.email,
+          joinedReferralCount: 0,
+          depositedReferralCount: 0,
+          referralEarnings: 0,
+          totalReferralDeposits: 0,
+          members: [],
+        };
+        rankingsByReferrer.set(referrerId, ranking);
+      }
+
+      const memberDepositTotal = depositsByUser.get(referredUser._id.toString()) || 0;
+      ranking.joinedReferralCount++;
+      if (memberDepositTotal > 0) ranking.depositedReferralCount++;
+      ranking.totalReferralDeposits += memberDepositTotal;
+      ranking.referralEarnings += referral.totalEarnedFromUser || 0;
+      ranking.members.push({
+        userId: referredUser._id,
+        name: referredUser.name,
+        email: referredUser.email,
+        joinedAt: referredUser.createdAt,
+        deposited: memberDepositTotal > 0,
+        totalDeposited: memberDepositTotal,
+        referralEarned: referral.totalEarnedFromUser || 0,
+      });
+    }
+
+    const rankings = [...rankingsByReferrer.values()]
+      .sort((a, b) => (
+        b.joinedReferralCount - a.joinedReferralCount
+        || b.depositedReferralCount - a.depositedReferralCount
+        || b.referralEarnings - a.referralEarnings
+        || a.name.localeCompare(b.name)
+      ))
+      .map((ranking, index) => ({ rank: index + 1, ...ranking }));
+
+    res.status(200).json({ success: true, data: rankings });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Permanently delete a user and their linked account data
 // @route   DELETE /api/admin/users/:userId
 // @access  Private/Admin

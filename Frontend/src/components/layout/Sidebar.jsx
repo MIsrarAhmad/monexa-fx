@@ -250,6 +250,26 @@ const Sidebar = memo(
               </button>
 
               <button
+                onClick={() => handleAdminTabClick('ledger')}
+                className={activeTab === 'ledger' ? activeClass : inactiveClass}
+              >
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-5 h-5 text-emerald-400" />
+                  <span>User Financial Ledger</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleAdminTabClick('referrals')}
+                className={activeTab === 'referrals' ? activeClass : inactiveClass}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-amber-400" />
+                  <span>Referral Rankings</span>
+                </div>
+              </button>
+
+              <button
                 onClick={() => handleAdminTabClick('announcements')}
                 className={activeTab === 'announcements' ? activeClass : inactiveClass}
               >

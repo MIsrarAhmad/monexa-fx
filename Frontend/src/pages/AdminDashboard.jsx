@@ -1,5 +1,5 @@
 // src/pages/AdminDashboard.jsx
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck,
@@ -38,6 +38,8 @@ import StatCard from '../components/common/StatCard';
 import Toast from '../components/common/Toast';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
+const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
+
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -64,6 +66,10 @@ const AdminDashboard = () => {
   const [userStatusFilter, setUserStatusFilter] = useState('ALL');
   const [selectedDeleteUser, setSelectedDeleteUser] = useState(null);
   const [deleteConfirmationEmail, setDeleteConfirmationEmail] = useState('');
+  const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
+  const [selectedLedgerUserId, setSelectedLedgerUserId] = useState('');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [expandedReferralUserId, setExpandedReferralUserId] = useState('');
 
   // Admin Profile Form States
   const [adminName, setAdminName] = useState(user?.name || '');
@@ -94,6 +100,47 @@ const AdminDashboard = () => {
       const res = await axiosInstance.get('/admin/referral-code');
       return res.data.data.referralCode;
     },
+  });
+
+  const {
+    data: ledgerUsers = [],
+    isLoading: loadingLedgerUsers,
+    isError: ledgerUsersError,
+  } = useQuery({
+    queryKey: ['adminFinancialLedgerUsers'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/admin/financial-ledger/users');
+      return res.data.data;
+    },
+    enabled: activeTab === 'ledger',
+  });
+
+  const {
+    data: selectedLedger,
+    isLoading: loadingSelectedLedger,
+    isError: selectedLedgerError,
+  } = useQuery({
+    queryKey: ['adminFinancialLedgerUser', selectedLedgerUserId, ledgerPage],
+    queryFn: async () => {
+      const res = await axiosInstance.get(
+        `/admin/financial-ledger/users/${selectedLedgerUserId}?page=${ledgerPage}`
+      );
+      return res.data.data;
+    },
+    enabled: activeTab === 'ledger' && Boolean(selectedLedgerUserId),
+  });
+
+  const {
+    data: referralRankings = [],
+    isLoading: loadingReferralRankings,
+    isError: referralRankingsError,
+  } = useQuery({
+    queryKey: ['adminReferralRankings'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/admin/referral-rankings');
+      return res.data.data;
+    },
+    enabled: activeTab === 'referrals',
   });
 
   // 2. Fetch pending withdrawals
@@ -285,6 +332,10 @@ const AdminDashboard = () => {
     const matchesStatus = userStatusFilter === 'ALL' || u.status === userStatusFilter;
     return matchesSearch && matchesStatus;
   });
+  const filteredLedgerUsers = ledgerUsers.filter((ledgerUser) => (
+    ledgerUser.name.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
+    || ledgerUser.email.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
+  ));
 
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
@@ -403,6 +454,314 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'ledger' && (
+            <div className="space-y-6">
+              <section className="neon-card p-6 rounded-2xl border border-slate-800">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Wallet className="w-5 h-5 text-emerald-400" /> User Financial Ledger
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Completed deposits, credited profit, referral income, paid withdrawals, and current balances.
+                    </p>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="search"
+                      value={ledgerSearchQuery}
+                      onChange={(event) => setLedgerSearchQuery(event.target.value)}
+                      placeholder="Search user name or email..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {loadingLedgerUsers ? (
+                  <div className="py-10 text-center text-slate-400">Loading user financial records...</div>
+                ) : ledgerUsersError ? (
+                  <div role="alert" className="py-10 text-center text-rose-400">
+                    Could not load the financial ledger. Refresh and try again.
+                  </div>
+                ) : filteredLedgerUsers.length === 0 ? (
+                  <div className="py-10 text-center text-slate-500">No users match this search.</div>
+                ) : (
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="w-full min-w-[900px] text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400">
+                          <th className="px-3 py-3">User</th>
+                          <th className="px-3 py-3">Deposited</th>
+                          <th className="px-3 py-3">Profit</th>
+                          <th className="px-3 py-3">Referral earned</th>
+                          <th className="px-3 py-3">Withdrawn</th>
+                          <th className="px-3 py-3">Current balance</th>
+                          <th className="px-3 py-3">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {filteredLedgerUsers.map((ledgerUser) => (
+                          <tr
+                            key={ledgerUser.userId}
+                            className={selectedLedgerUserId === ledgerUser.userId ? 'bg-slate-900/70' : 'hover:bg-slate-900/40'}
+                          >
+                            <td className="px-3 py-3">
+                              <div className="font-semibold text-white">{ledgerUser.name}</div>
+                              <div className="text-slate-400">{ledgerUser.email}</div>
+                            </td>
+                            <td className="px-3 py-3 text-cyan-300">{formatUsdt(ledgerUser.totalDeposited)}</td>
+                            <td className="px-3 py-3 text-emerald-300">{formatUsdt(ledgerUser.totalProfit)}</td>
+                            <td className="px-3 py-3 text-amber-300">{formatUsdt(ledgerUser.totalReferralEarned)}</td>
+                            <td className="px-3 py-3 text-rose-300">
+                              {formatUsdt(ledgerUser.totalWithdrawn)}
+                              <div className="text-[10px] text-slate-500">Net paid {formatUsdt(ledgerUser.totalPaidOut)}</div>
+                            </td>
+                            <td className="px-3 py-3 text-white">
+                              {formatUsdt(
+                                ledgerUser.balances.investment
+                                + ledgerUser.balances.profit
+                                + ledgerUser.balances.referral
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedLedgerUserId(ledgerUser.userId);
+                                  setLedgerPage(1);
+                                }}
+                                className="rounded-lg border border-cyan-800 px-3 py-1.5 font-semibold text-cyan-300 hover:bg-cyan-950/60"
+                              >
+                                View ledger
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              {selectedLedgerUserId && (
+                <section className="neon-card p-6 rounded-2xl border border-slate-800">
+                  {loadingSelectedLedger ? (
+                    <div className="py-8 text-center text-slate-400">Loading selected user ledger...</div>
+                  ) : selectedLedgerError ? (
+                    <div role="alert" className="py-8 text-center text-rose-400">
+                      Could not load this user's transaction history.
+                    </div>
+                  ) : selectedLedger ? (
+                    <>
+                      <div className="mb-5">
+                        <h3 className="text-base font-bold text-white">
+                          {selectedLedger.user.name} — account breakdown
+                        </h3>
+                        <p className="text-xs text-slate-400">{selectedLedger.user.email}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="rounded-xl border border-cyan-900/50 bg-slate-900/60 p-4">
+                          <p className="text-xs text-slate-400">Total completed deposits</p>
+                          <p className="mt-1 font-bold text-cyan-300">{formatUsdt(selectedLedger.summary.totalDeposited)}</p>
+                        </div>
+                        <div className="rounded-xl border border-emerald-900/50 bg-slate-900/60 p-4">
+                          <p className="text-xs text-slate-400">Profit credited</p>
+                          <p className="mt-1 font-bold text-emerald-300">{formatUsdt(selectedLedger.summary.totalProfit)}</p>
+                        </div>
+                        <div className="rounded-xl border border-amber-900/50 bg-slate-900/60 p-4">
+                          <p className="text-xs text-slate-400">Referral income earned</p>
+                          <p className="mt-1 font-bold text-amber-300">{formatUsdt(selectedLedger.summary.totalReferralEarned)}</p>
+                        </div>
+                        <div className="rounded-xl border border-rose-900/50 bg-slate-900/60 p-4">
+                          <p className="text-xs text-slate-400">Withdrawn / net paid</p>
+                          <p className="mt-1 font-bold text-rose-300">{formatUsdt(selectedLedger.summary.totalWithdrawn)}</p>
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            Net paid {formatUsdt(selectedLedger.summary.totalPaidOut)} · Fees {formatUsdt(selectedLedger.summary.totalWithdrawalFees)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                        <h4 className="text-xs font-bold text-white">Remaining available balance</h4>
+                        <div className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+                          <p className="text-slate-400">Investment: <span className="font-semibold text-cyan-300">{formatUsdt(selectedLedger.summary.balances.investment)}</span></p>
+                          <p className="text-slate-400">Profit: <span className="font-semibold text-emerald-300">{formatUsdt(selectedLedger.summary.balances.profit)}</span></p>
+                          <p className="text-slate-400">Referral: <span className="font-semibold text-amber-300">{formatUsdt(selectedLedger.summary.balances.referral)}</span></p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <h4 className="mb-3 text-sm font-bold text-white">Transaction history</h4>
+                        {selectedLedger.transactions.length === 0 ? (
+                          <p className="py-6 text-center text-xs text-slate-500">No transactions recorded for this user.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-800 text-slate-400">
+                                  <th className="px-3 py-3">Date</th>
+                                  <th className="px-3 py-3">Type</th>
+                                  <th className="px-3 py-3">Amount</th>
+                                  <th className="px-3 py-3">Status</th>
+                                  <th className="px-3 py-3">Description</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60">
+                                {selectedLedger.transactions.map((transaction) => (
+                                  <tr key={transaction._id}>
+                                    <td className="whitespace-nowrap px-3 py-3 text-slate-400">
+                                      {new Date(transaction.createdAt).toLocaleString()}
+                                    </td>
+                                    <td className="px-3 py-3 text-slate-200">{transaction.type.replace(/_/g, ' ')}</td>
+                                    <td className="px-3 py-3 font-semibold text-white">{formatUsdt(transaction.amount)}</td>
+                                    <td className="px-3 py-3 text-slate-300">{transaction.status}</td>
+                                    <td className="max-w-sm px-3 py-3 text-slate-400">
+                                      {transaction.description || transaction.paymentMethod || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {selectedLedger.pagination.pages > 1 && (
+                          <div className="mt-4 flex items-center justify-between text-xs">
+                            <button
+                              type="button"
+                              disabled={ledgerPage <= 1}
+                              onClick={() => setLedgerPage((page) => page - 1)}
+                              className="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-slate-400">
+                              Page {selectedLedger.pagination.page} of {selectedLedger.pagination.pages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={ledgerPage >= selectedLedger.pagination.pages}
+                              onClick={() => setLedgerPage((page) => page + 1)}
+                              className="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'referrals' && (
+            <section className="neon-card p-6 rounded-2xl border border-slate-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-400" /> Referral Rankings
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Admin-only leaderboard: ranked by joined referrals, then deposited referrals, then referral earnings.
+              </p>
+
+              {loadingReferralRankings ? (
+                <div className="py-10 text-center text-slate-400">Loading referral rankings...</div>
+              ) : referralRankingsError ? (
+                <div role="alert" className="py-10 text-center text-rose-400">
+                  Could not load referral rankings. Refresh and try again.
+                </div>
+              ) : referralRankings.length === 0 ? (
+                <div className="py-10 text-center text-slate-500">No member referral records found.</div>
+              ) : (
+                <div className="mt-5 overflow-x-auto">
+                  <table className="w-full min-w-[800px] text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="px-3 py-3">Rank</th>
+                        <th className="px-3 py-3">Referrer</th>
+                        <th className="px-3 py-3">Joined</th>
+                        <th className="px-3 py-3">Deposited</th>
+                        <th className="px-3 py-3">Referral deposits</th>
+                        <th className="px-3 py-3">Referral earnings</th>
+                        <th className="px-3 py-3">Members</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {referralRankings.map((ranking) => (
+                        <Fragment key={ranking.userId}>
+                          <tr className="hover:bg-slate-900/40">
+                            <td className="px-3 py-3 font-bold text-amber-300">#{ranking.rank}</td>
+                            <td className="px-3 py-3">
+                              <div className="font-semibold text-white">{ranking.name}</div>
+                              <div className="text-slate-400">{ranking.email}</div>
+                            </td>
+                            <td className="px-3 py-3 text-white">{ranking.joinedReferralCount}</td>
+                            <td className="px-3 py-3 text-emerald-300">{ranking.depositedReferralCount}</td>
+                            <td className="px-3 py-3 text-cyan-300">{formatUsdt(ranking.totalReferralDeposits)}</td>
+                            <td className="px-3 py-3 text-amber-300">{formatUsdt(ranking.referralEarnings)}</td>
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedReferralUserId(
+                                  expandedReferralUserId === ranking.userId ? '' : ranking.userId
+                                )}
+                                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 hover:bg-slate-800"
+                              >
+                                {expandedReferralUserId === ranking.userId ? 'Hide members' : 'View members'}
+                              </button>
+                            </td>
+                          </tr>
+                          {expandedReferralUserId === ranking.userId && (
+                            <tr>
+                              <td colSpan={7} className="bg-slate-950/60 p-4">
+                                {ranking.members.length === 0 ? (
+                                  <p className="text-xs text-slate-500">No referred members.</p>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[620px] text-left text-xs">
+                                      <thead>
+                                        <tr className="text-slate-500">
+                                          <th className="px-3 py-2">Member</th>
+                                          <th className="px-3 py-2">Joined</th>
+                                          <th className="px-3 py-2">Deposit status</th>
+                                          <th className="px-3 py-2">Total deposits</th>
+                                          <th className="px-3 py-2">Referral earned</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-800/60">
+                                        {ranking.members.map((member) => (
+                                          <tr key={member.userId}>
+                                            <td className="px-3 py-2">
+                                              <div className="text-slate-200">{member.name}</div>
+                                              <div className="text-slate-500">{member.email}</div>
+                                            </td>
+                                            <td className="px-3 py-2 text-slate-400">
+                                              {new Date(member.joinedAt).toLocaleDateString()}
+                                            </td>
+                                            <td className={member.deposited ? 'px-3 py-2 text-emerald-300' : 'px-3 py-2 text-slate-500'}>
+                                              {member.deposited ? 'Deposited' : 'No completed deposit'}
+                                            </td>
+                                            <td className="px-3 py-2 text-cyan-300">{formatUsdt(member.totalDeposited)}</td>
+                                            <td className="px-3 py-2 text-amber-300">{formatUsdt(member.referralEarned)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           )}
 
           {/* TAB 2: KYC AUDIT QUEUE */}
