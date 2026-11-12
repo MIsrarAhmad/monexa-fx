@@ -9,7 +9,7 @@ import NotificationCenter from './NotificationCenter';
 const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
 
-  const MONEXAFX_CHAT_URL = 'https://smp15.simplex.im/c#e1j3FUyEqT0OzeGprP26OZ7yea6nqTMULxV-yCG5ouU';
+  const MONEXAFX_DISCORD_URL = 'https://discord.gg/tUM3Urq7';
 
   return (
     <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-3 py-2.5 sm:px-4 sm:py-3 md:px-8">
@@ -56,12 +56,12 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Chat link */}
           <a
-            href={MONEXAFX_CHAT_URL}
+            href={MONEXAFX_DISCORD_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="relative p-1.5 sm:p-2 rounded-xl bg-cyan-950/80 text-cyan-300 hover:text-white hover:bg-cyan-900/80 border border-cyan-700/50 transition flex items-center gap-1.5 text-xs font-bold shadow-md shadow-cyan-950/40"
-            title="Open chat"
-            aria-label="Open chat"
+            title="Open Discord"
+            aria-label="Open Discord"
           >
             <MessageCircle className="w-4 h-4 text-cyan-400" />
             <span className="hidden sm:inline">Chat</span>
