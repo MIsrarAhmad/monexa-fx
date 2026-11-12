@@ -15,6 +15,7 @@ import VerificationPage from './pages/VerificationPage';
 import ReferralsPage from './pages/ReferralsPage';
 import TermsPolicyPage from './pages/TermsPolicyPage';
 import AboutUsPage from './pages/AboutUsPage';
+import SimplexChannelPage from './pages/SimplexChannelPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { useAuthStore } from './store/useAuthStore';
 
@@ -31,6 +32,7 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/simplex-channel" element={<SimplexChannelPage />} />
 
       {/* Protected User Dashboard Routes */}
       <Route element={<ProtectedRoute allowedRoles={['user']} />}>
