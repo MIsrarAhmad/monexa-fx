@@ -2,12 +2,12 @@ import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import {
-  MINIMUM_DEPOSIT_AMOUNT,
   MINIMUM_INITIAL_DEPOSIT,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
   WITHDRAWAL_LOCK_PROFIT_TARGET,
   WITHDRAWAL_FEE_PERCENTAGE,
 } from '../config/constants.js';
+import { getMinimumDepositForBalance } from '../utils/depositRules.js';
 
 // @desc    Get live user wallet details & audit stats
 // @route   GET /api/wallet/me
@@ -65,7 +65,7 @@ export const getTopUpInfo = async (req, res, next) => {
       data: {
         currentMainBalance: currentBalance,
         minimumRequiredThreshold: MINIMUM_INITIAL_DEPOSIT,
-        minRequiredDeposit: MINIMUM_DEPOSIT_AMOUNT,
+        minRequiredDeposit: getMinimumDepositForBalance(currentBalance),
         isThresholdMet: currentBalance >= MINIMUM_INITIAL_DEPOSIT,
       },
     });

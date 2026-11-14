@@ -1,8 +1,10 @@
 // src/controllers/depositController.js
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
-import { MINIMUM_DEPOSIT_AMOUNT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../config/constants.js';
 import { notifyUser } from '../services/notificationService.js';
+import { getMinimumDepositForBalance } from '../utils/depositRules.js';
+import Wallet from '../models/Wallet.js';
 
 // @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
@@ -61,10 +63,21 @@ export const submitManualDeposit = async (req, res, next) => {
       });
     }
 
-    if (depositAmount < MINIMUM_DEPOSIT_AMOUNT) {
+    const wallet = await Wallet.findOne({ user: user._id });
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found. Please contact support before depositing.',
+      });
+    }
+
+    const minimumDeposit = getMinimumDepositForBalance(wallet.mainBalance);
+    if (depositAmount < minimumDeposit) {
       return res.status(400).json({
         success: false,
-        error: `Amount below required minimum. Every deposit must be at least $${MINIMUM_DEPOSIT_AMOUNT} USDT.`,
+        error: wallet.mainBalance < MINIMUM_INITIAL_DEPOSIT
+          ? `Deposit at least $${minimumDeposit.toFixed(2)} USDT to reach the $${MINIMUM_INITIAL_DEPOSIT} investment threshold.`
+          : `Every deposit must be at least $${minimumDeposit.toFixed(2)} USDT.`,
       });
     }
 
@@ -74,6 +87,7 @@ export const submitManualDeposit = async (req, res, next) => {
       user: req.user._id,
       type: 'DEPOSIT',
       amount: depositAmount,
+      minimumRequiredAtSubmission: minimumDeposit,
       txHash: normalizedTxHash,
       paymentMethod: 'TRC20',
       paymentProofUrl,

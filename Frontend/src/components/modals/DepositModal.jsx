@@ -28,8 +28,22 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
     enabled: isOpen,
   });
 
+  const {
+    data: topUpInfo,
+    isLoading: loadingTopUpInfo,
+    isError: topUpInfoError,
+  } = useQuery({
+    queryKey: ['wallet-topup-info'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/wallet/topup-info');
+      return res.data.data;
+    },
+    enabled: isOpen,
+    refetchOnMount: 'always',
+  });
+
   const isKycApproved = kycData?.kycStatus === 'APPROVED';
-  const minRequired = 300;
+  const minRequired = topUpInfo?.minRequiredDeposit ?? 300;
 
   // Deposit Submit Mutation
   const depositMutation = useMutation({
@@ -92,6 +106,11 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
       return;
     }
 
+    if (loadingTopUpInfo || topUpInfoError) {
+      setError('Could not verify the minimum deposit amount. Please close and reopen this form, then try again.');
+      return;
+    }
+
     const depositAmount = parseFloat(amount);
     if (!depositAmount || depositAmount < minRequired) {
       setError(`The minimum deposit is $${minRequired} USDT.`);
@@ -147,19 +166,23 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
           </div>
         ) : (
           <>
-            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-800 text-xs mb-4 flex justify-between items-center">
-              <span className="text-slate-300">Minimum per deposit:</span>
-              <span className="font-extrabold text-cyan-400 text-sm">${minRequired}.00 USDT</span>
+            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-800 text-xs mb-4 flex justify-between items-center gap-3">
+              <span className="text-slate-300">
+                {topUpInfo?.isThresholdMet ? 'Minimum per deposit:' : 'Minimum top-up to reach $300:'}
+              </span>
+              <span className="font-extrabold text-cyan-400 text-sm">${Number(minRequired).toFixed(2)} USDT</span>
             </div>
             <p className="text-xs text-slate-400 -mt-2 mb-4">
-              Daily yield activates when your main balance reaches $300 USDT.
+              {topUpInfo?.isThresholdMet
+                ? 'Your investment balance currently meets the daily-profit threshold.'
+                : 'Daily profit starts after your approved investment balance reaches $300 USDT.'}
             </p>
 
             {/* Error Alert */}
-            {error && (
+            {(error || topUpInfoError) && (
               <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{error}</span>
+                <span>{error || 'Could not load your current minimum deposit. Please close and reopen this form.'}</span>
               </div>
             )}
 
@@ -212,6 +235,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
                 <input
                   type="number"
                   min={minRequired}
+                  step="0.01"
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -250,7 +274,7 @@ const DepositModal = ({ isOpen, onClose, onShowToast }) => {
 
               <button
                 type="submit"
-                disabled={depositMutation.isPending || !hasDepositAddress}
+                disabled={depositMutation.isPending || loadingTopUpInfo || topUpInfoError || !hasDepositAddress}
                 className="w-full btn-neon-primary py-3 rounded-xl font-bold text-sm mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {depositMutation.isPending ? (

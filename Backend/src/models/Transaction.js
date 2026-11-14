@@ -26,6 +26,10 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    minimumRequiredAtSubmission: {
+      type: Number,
+      default: null,
+    },
     netAmount: {
       type: Number,
       default: 0, // Amount received after deducting 20% platform fee on withdrawals

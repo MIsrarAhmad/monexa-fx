@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" role="img" aria-labelledby="title description">
+  <title id="title">Monexa FX — Premium Bull logo concept</title>
+  <desc id="description">A polished blue bull and rising market arrow inside a globe, paired with the Monexa FX wordmark.</desc>
+  <defs>
+    <linearGradient id="frame" x1="30" y1="24" x2="274" y2="276" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92e7ff"/>
+      <stop offset=".34" stop-color="#0788ff"/>
+      <stop offset=".7" stop-color="#164bca"/>
+      <stop offset="1" stop-color="#65dcff"/>
+    </linearGradient>
+    <linearGradient id="bull" x1="78" y1="58" x2="236" y2="214" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fdff"/>
+      <stop offset=".46" stop-color="#79dfff"/>
+      <stop offset="1" stop-color="#1685ff"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="57" y1="226" x2="248" y2="151" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0677ff"/>
+      <stop offset=".56" stop-color="#16ddff"/>
+      <stop offset="1" stop-color="#efffff"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="0" cy="0" r="1" gradientTransform="matrix(0 126 -126 0 152 142)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#123a77"/>
+      <stop offset="1" stop-color="#061226"/>
+    </radialGradient>
+    <filter id="glow" x="14" y="12" width="278" height="278" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(0 0)">
+    <rect x="28" y="24" width="244" height="252" rx="46" fill="#06101f" stroke="#1464bd" stroke-width="2"/>
+    <rect x="28" y="24" width="244" height="252" rx="46" stroke="url(#frame)" stroke-width="3"/>
+    <rect x="31" y="27" width="238" height="246" rx="43" stroke="#72dcff" stroke-opacity=".16"/>
+
+    <circle cx="150" cy="137" r="94" fill="url(#orb)" stroke="#168eff" stroke-opacity=".65" stroke-width="1.5"/>
+    <circle cx="150" cy="137" r="72" fill="none" stroke="#19b9ff" stroke-opacity=".24"/>
+    <ellipse cx="150" cy="137" rx="39" ry="94" fill="none" stroke="#1dbfff" stroke-opacity=".24"/>
+    <ellipse cx="150" cy="137" rx="72" ry="30" fill="none" stroke="#1dbfff" stroke-opacity=".2"/>
+    <path d="M66 119h168M59 145h182M67 172h166" stroke="#1dbfff" stroke-opacity=".17"/>
+
+    <g fill="#24caff" opacity=".8">
+      <circle cx="101" cy="82" r="2"/><circle cx="119" cy="67" r="2"/><circle cx="143" cy="60" r="2"/>
+      <circle cx="166" cy="63" r="2"/><circle cx="187" cy="74" r="2"/><circle cx="204" cy="92" r="2"/>
+      <circle cx="81" cy="111" r="2"/><circle cx="222" cy="121" r="2"/><circle cx="78" cy="155" r="2"/>
+      <circle cx="220" cy="163" r="2"/><circle cx="98" cy="192" r="2"/><circle cx="195" cy="196" r="2"/>
+    </g>
+
+    <path d="M96 113c-17-10-25-24-25-40 13 13 27 16 42 13m75 27c17-10 25-24 25-40-13 13-27 16-42 13" fill="none" stroke="url(#bull)" stroke-linecap="round" stroke-linejoin="round" stroke-width="13"/>
+    <path d="M105 99c8-13 25-21 45-21s37 8 45 21l-7 37c-3 21-18 37-38 46-20-9-35-25-38-46l-7-37Z" fill="#071729" stroke="url(#bull)" stroke-width="5"/>
+    <path d="M122 108c7-8 17-12 28-12s21 4 28 12l-6 28c-2 12-10 22-22 29-12-7-20-17-22-29l-6-28Z" fill="#0b2f58" stroke="#4ecfff" stroke-opacity=".75" stroke-width="2"/>
+    <path d="M128 118c5-4 12-4 17 0l-4 8h-10l-3-8Zm25 0c5-4 12-4 17 0l-3 8h-10l-4-8Z" fill="#06101f" stroke="#baf4ff" stroke-width="2"/>
+    <path d="M143 138h11l-5.5 8-5.5-8Z" fill="#17cfff"/>
+    <path d="M142 151c4 3 9 3 13 0" fill="none" stroke="#d3f8ff" stroke-linecap="round" stroke-width="2"/>
+    <path d="m138 159 11-7 11 7-11 13-11-13Z" fill="#138dff" fill-opacity=".72"/>
+
+    <g opacity=".95">
+      <path d="M62 205v-20h9v20m8 0v-35h9v35m132 0v-43h9v43m8 0v-60h9v60" fill="#0a84ff" fill-opacity=".5" stroke="#45d9ff" stroke-width="2"/>
+      <path d="M53 224 112 202l35 8 82-47 15 19 21-54-56 12 16 12-74 41-38-8-70 27Z" fill="url(#arrow)" stroke="#a8f4ff" stroke-linejoin="round" stroke-width="2"/>
+    </g>
+
+    <path d="M67 250h166" stroke="#20b9ff" stroke-opacity=".58" stroke-linecap="round"/>
+    <path d="M116 250h68" stroke="#52e5ff" stroke-linecap="round" stroke-width="3"/>
+    <path d="M146 239v22m9-28v34m9-23v18" stroke="#42d9ff" stroke-linecap="round" stroke-width="3"/>
+  </g>
+
+  <g font-family="Inter, Montserrat, Arial, sans-serif" font-weight="800" letter-spacing="-2">
+    <text x="322" y="160" fill="#f3f8ff" font-size="82">MONEXA</text>
+    <text x="684" y="160" fill="#1fc9ff" font-size="82">FX</text>
+    <path d="M326 190h430" stroke="#1d8ee8" stroke-opacity=".36" stroke-width="2"/>
+    <path d="M326 190h122" stroke="#20d9ff" stroke-width="3"/>
+    <text x="328" y="225" fill="#8ca9c8" font-size="17" font-weight="600" letter-spacing="5">SMARTER DIGITAL INVESTMENT</text>
+  </g>
+</svg>

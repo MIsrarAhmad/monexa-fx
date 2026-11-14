@@ -1,5 +1,5 @@
 // src/pages/AdminDashboard.jsx
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck,
@@ -39,6 +39,13 @@ import Toast from '../components/common/Toast';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
+const formatCountdown = (milliseconds) => {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+};
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
@@ -70,6 +77,7 @@ const AdminDashboard = () => {
   const [selectedLedgerUserId, setSelectedLedgerUserId] = useState('');
   const [ledgerPage, setLedgerPage] = useState(1);
   const [expandedReferralUserId, setExpandedReferralUserId] = useState('');
+  const [clockNow, setClockNow] = useState(0);
 
   // Admin Profile Form States
   const [adminName, setAdminName] = useState(user?.name || '');
@@ -128,6 +136,7 @@ const AdminDashboard = () => {
       return res.data.data;
     },
     enabled: activeTab === 'ledger' && Boolean(selectedLedgerUserId),
+    refetchInterval: activeTab === 'ledger' && selectedLedgerUserId ? 15000 : false,
   });
 
   const {
@@ -142,6 +151,12 @@ const AdminDashboard = () => {
     },
     enabled: activeTab === 'referrals',
   });
+
+  useEffect(() => {
+    if (activeTab !== 'ledger' || !selectedLedgerUserId) return undefined;
+    const intervalId = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [activeTab, selectedLedgerUserId]);
 
   // 2. Fetch pending withdrawals
   const { data: pendingWithdrawals, isLoading: loadingWithdrawals } = useQuery({
@@ -336,6 +351,10 @@ const AdminDashboard = () => {
     ledgerUser.name.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
     || ledgerUser.email.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
   ));
+  const profitTimer = selectedLedger?.summary?.profitTimer;
+  const profitTimeRemaining = profitTimer?.nextProfitAt
+    ? new Date(profitTimer.nextProfitAt).getTime() - clockNow
+    : null;
 
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
@@ -350,7 +369,10 @@ const AdminDashboard = () => {
           onCloseSidebar={() => setSidebarOpen(false)}
           onLogout={handleLogout}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={(tab) => {
+            if (tab === 'ledger') setClockNow(Date.now());
+            setActiveTab(tab);
+          }}
           pendingWithdrawalsCount={metrics?.pendingWithdrawalsCount || 0}
           pendingKycCount={pendingKycs?.length || 0}
           pendingDepositsCount={metrics?.pendingDepositsCount || pendingDeposits?.length || 0}
@@ -532,6 +554,7 @@ const AdminDashboard = () => {
                                 onClick={() => {
                                   setSelectedLedgerUserId(ledgerUser.userId);
                                   setLedgerPage(1);
+                                  setClockNow(Date.now());
                                 }}
                                 className="rounded-lg border border-cyan-800 px-3 py-1.5 font-semibold text-cyan-300 hover:bg-cyan-950/60"
                               >
@@ -591,6 +614,39 @@ const AdminDashboard = () => {
                           <p className="text-slate-400">Profit: <span className="font-semibold text-emerald-300">{formatUsdt(selectedLedger.summary.balances.profit)}</span></p>
                           <p className="text-slate-400">Referral: <span className="font-semibold text-amber-300">{formatUsdt(selectedLedger.summary.balances.referral)}</span></p>
                         </div>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h4 className="text-xs font-bold text-white">Daily 1% profit timer</h4>
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              Timer is based on the approved investment balance and the backend profit schedule.
+                            </p>
+                          </div>
+                          {profitTimer?.remainingToThreshold > 0 ? (
+                            <div className="text-sm font-bold text-amber-300">
+                              Paused · {formatUsdt(profitTimer.remainingToThreshold)} needed to reach $300
+                            </div>
+                          ) : profitTimer?.isPaused ? (
+                            <div className="text-sm font-bold text-amber-300">Timer paused</div>
+                          ) : profitTimeRemaining === null ? (
+                            <div className="text-sm font-bold text-amber-300">Timer schedule unavailable</div>
+                          ) : profitTimeRemaining > 0 ? (
+                            <div className="text-lg font-extrabold tabular-nums text-cyan-300">
+                              Next profit in {formatCountdown(profitTimeRemaining)}
+                            </div>
+                          ) : (
+                            <div className="text-sm font-bold text-emerald-300">
+                              Profit due · processing by the yield scheduler
+                            </div>
+                          )}
+                        </div>
+                        {profitTimer?.nextProfitAt && (
+                          <p className="mt-2 text-[10px] text-slate-500">
+                            Scheduled at {new Date(profitTimer.nextProfitAt).toLocaleString()}
+                          </p>
+                        )}
                       </div>
 
                       <div className="mt-6">

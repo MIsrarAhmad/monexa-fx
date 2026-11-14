@@ -8,6 +8,7 @@ import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
+import { getMinimumDepositForBalance } from '../utils/depositRules.js';
 import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -367,7 +368,9 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
     const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
     const pageSize = 100;
     const [wallet, totalsByUser, transactionCount, transactions] = await Promise.all([
-      Wallet.findOne({ user: user._id }).select('mainBalance profitBalance referralBalance').lean(),
+      Wallet.findOne({ user: user._id })
+        .select('mainBalance profitBalance referralBalance nextYieldAt yieldPaused')
+        .lean(),
       getUserFinancialTotals([user._id]),
       Transaction.countDocuments({ user: user._id }),
       Transaction.find({ user: user._id })
@@ -394,6 +397,15 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
             investment: wallet?.mainBalance || 0,
             profit: wallet?.profitBalance || 0,
             referral: wallet?.referralBalance || 0,
+          },
+          profitTimer: {
+            threshold: MINIMUM_INITIAL_DEPOSIT,
+            remainingToThreshold: Math.max(
+              0,
+              Number((MINIMUM_INITIAL_DEPOSIT - (wallet?.mainBalance || 0)).toFixed(2))
+            ),
+            isPaused: !wallet || wallet.mainBalance < MINIMUM_INITIAL_DEPOSIT || wallet.yieldPaused,
+            nextProfitAt: wallet?.nextYieldAt || null,
           },
         },
         transactions,
@@ -627,16 +639,26 @@ export const processDepositAction = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'User wallet record not found' });
     }
 
+    const minimumDeposit = transaction.minimumRequiredAtSubmission
+      ?? getMinimumDepositForBalance(wallet.mainBalance);
+    if (depositAmount < minimumDeposit) {
+      return res.status(400).json({
+        success: false,
+        error: `This deposit is below the required minimum of $${minimumDeposit.toFixed(2)} USDT.`,
+      });
+    }
+
     const previousBalance = wallet.mainBalance;
     wallet.mainBalance += depositAmount;
 
     if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
+      const approvedAt = new Date();
       if (user) {
-        user.firstDepositAt = new Date();
+        user.firstDepositAt = approvedAt;
         await user.save();
       }
       wallet.yieldPaused = false;
-      wallet.nextYieldAt = new Date(Date.now() + DAY_IN_MS);
+      wallet.nextYieldAt = new Date(approvedAt.getTime() + DAY_IN_MS);
     }
     await wallet.save();
 

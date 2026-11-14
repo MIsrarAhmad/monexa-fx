@@ -61,10 +61,11 @@ export const handleBinanceWebhook = async (req, res) => {
 
       // Start a fresh activation period when the main balance reaches $300.
       if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
-        user.firstDepositAt = new Date();
+        const approvedAt = new Date();
+        user.firstDepositAt = approvedAt;
         await user.save();
         wallet.yieldPaused = false;
-        wallet.nextYieldAt = new Date(Date.now() + DAY_IN_MS);
+        wallet.nextYieldAt = new Date(approvedAt.getTime() + DAY_IN_MS);
       }
       await wallet.save();
 
