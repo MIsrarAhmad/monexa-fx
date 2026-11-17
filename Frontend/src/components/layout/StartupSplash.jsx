@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import LOGO_IMAGE_PATH from '../../assets/startup-splash-logo.png';
 import './StartupSplash.css';
 
 function isInstalledApp() {
@@ -49,7 +48,7 @@ function StartupSplash() {
     >
       <img
         className={`startup-splash__logo${isLogoLoaded ? ' startup-splash__logo--loaded' : ''}`}
-        src={LOGO_IMAGE_PATH}
+        src="/monexafx-logo.png"
         alt=""
         onLoad={() => setIsLogoLoaded(true)}
         onError={() => {
