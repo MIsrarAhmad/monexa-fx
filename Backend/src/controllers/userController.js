@@ -32,6 +32,7 @@ export const updateProfile = async (req, res, next) => {
       data: {
         _id: user._id,
         name: user.name,
+        country: user.country || null,
         email: user.email,
         role: user.role,
         referralCode: user.referralCode,

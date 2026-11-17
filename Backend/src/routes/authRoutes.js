@@ -9,6 +9,7 @@ import {
   resetPassword,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { COUNTRY_CODES } from '../utils/countries.js';
 
 const router = express.Router();
 const passwordResetRequestLimiter = rateLimit({
@@ -26,6 +27,9 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+router.get('/countries', (req, res) => {
+  res.json({ success: true, data: { countries: COUNTRY_CODES } });
+});
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/forgot-password', passwordResetRequestLimiter, requestPasswordReset);

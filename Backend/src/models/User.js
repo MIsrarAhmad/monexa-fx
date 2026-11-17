@@ -1,5 +1,7 @@
 // Backend/src/models/User.js
 import mongoose from 'mongoose';
+import { isValidCountryCode } from '../utils/countries.js';
+import { isValidDateOfBirth } from '../utils/dateOfBirth.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -7,6 +9,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a name'],
       trim: true,
+    },
+    fatherName: {
+      type: String,
+      trim: true,
+      minlength: 1,
+      maxlength: 100,
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    },
+    dateOfBirth: {
+      type: String,
+      validate: isValidDateOfBirth,
+    },
+    country: {
+      type: String,
+      validate: isValidCountryCode,
     },
     email: {
       type: String,

@@ -9,19 +9,38 @@ import { generateRefCode } from '../utils/generateRefCode.js';
 import { sendEmail } from '../services/emailService.js';
 import { passwordResetEmailTemplate, welcomeEmailTemplate } from '../utils/emailTemplates.js';
 import { isValidPassword, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy.js';
+import { isValidCountryCode } from '../utils/countries.js';
+import { isValidDateOfBirth } from '../utils/dateOfBirth.js';
 
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, referralCode } = req.body;
+    const { name, fatherName, gender, dateOfBirth, country, email, password, referralCode } = req.body;
 
-    if (!name || !email || !password) {
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 100 ||
+        typeof fatherName !== 'string' || !fatherName.trim() || fatherName.trim().length > 100) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide name, email, and password',
+        error: 'Please provide a name and father name of up to 100 characters each',
       });
+    }
+    if (!['male', 'female', 'other', 'prefer_not_to_say'].includes(gender)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid gender' });
+    }
+    if (!isValidDateOfBirth(dateOfBirth)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide a valid date of birth in YYYY-MM-DD format that is not in the future',
+      });
+    }
+    if (!isValidCountryCode(country)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid ISO alpha-2 country code' });
+    }
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid email address' });
     }
     if (!isValidPassword(password)) {
       return res.status(400).json({
@@ -39,7 +58,7 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    const userExists = await User.findOne({ email: email.toLowerCase() });
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -81,8 +100,12 @@ export const registerUser = async (req, res, next) => {
     }
 
     const user = await User.create({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      fatherName: fatherName.trim(),
+      gender,
+      dateOfBirth,
+      country,
+      email: normalizedEmail,
       password: hashedPassword,
       referralCode: newRefCode,
       referredBy: referrerUser ? referrerUser._id : null,
@@ -121,6 +144,7 @@ export const registerUser = async (req, res, next) => {
         user: {
           _id: user._id,
           name: user.name,
+          country: user.country || null,
           email: user.email,
           role: user.role,
           referralCode: user.referralCode,
@@ -181,6 +205,7 @@ export const loginUser = async (req, res, next) => {
         user: {
           _id: user._id,
           name: user.name,
+          country: user.country || null,
           email: user.email,
           role: user.role,
           referralCode: user.referralCode,
@@ -325,6 +350,7 @@ export const getMe = async (req, res, next) => {
         user: {
           _id: user._id,
           name: user.name,
+          country: user.country || null,
           email: user.email,
           role: user.role,
           referralCode: user.referralCode,
