@@ -164,6 +164,50 @@ test('model permits legacy users and validates new fields when present', async (
   }
 });
 
+test('legacy profiles can update registration details individually and retain omitted values', async (t) => {
+  const user = {
+    _id: 'user-id', name: 'Existing', email: 'old@example.com', role: 'user',
+    referralCode: 'OLD', save: async () => {},
+  };
+  t.mock.method(User, 'findById', async () => user);
+  t.mock.method(Wallet, 'findOne', async () => null);
+
+  const legacy = (await invoke(getMe, {})).body.data.user;
+  assert.deepEqual([legacy.fatherName, legacy.gender, legacy.dateOfBirth, legacy.country], [null, null, null, null]);
+  const first = await invoke(updateProfile, { fatherName: '  Bruce Lee  ', country: 'PK' });
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.data.fatherName, 'Bruce Lee');
+  assert.equal(first.body.data.country, 'PK');
+  assert.equal(first.body.data.gender, null);
+  const second = await invoke(updateProfile, { gender: 'other', dateOfBirth: '2000-02-29' });
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.body.data.fatherName, 'Bruce Lee');
+  assert.equal(second.body.data.country, 'PK');
+  const loaded = (await invoke(getMe, {})).body.data.user;
+  assert.deepEqual(
+    [loaded.fatherName, loaded.gender, loaded.dateOfBirth, loaded.country],
+    ['Bruce Lee', 'other', '2000-02-29', 'PK'],
+  );
+  const oldClient = await invoke(updateProfile, { name: 'Updated' });
+  assert.equal(oldClient.body.data.country, 'PK');
+  assert.equal(oldClient.body.data.dateOfBirth, '2000-02-29');
+});
+
+test('profile rejects invalid personal details without changing the user', async (t) => {
+  const find = t.mock.method(User, 'findById', () => { throw new Error('unexpected database query'); });
+  for (const change of [
+    { fatherName: ' ' }, { fatherName: null }, { fatherName: 'x'.repeat(101) },
+    { gender: 'unknown' }, { gender: null }, { dateOfBirth: '2023-02-29' },
+    { dateOfBirth: '9999-12-31' }, { dateOfBirth: null },
+    { country: 'EU' }, { country: 'pk' }, { country: null },
+  ]) {
+    const res = await invoke(updateProfile, { name: 'Should not save', ...change });
+    assert.equal(res.statusCode, 400, JSON.stringify(change));
+    assert.equal(res.body.success, false);
+  }
+  assert.equal(find.mock.callCount(), 0);
+});
+
 test('login, me, and profile responses expose country and handle legacy accounts', async (t) => {
   const previousSecret = process.env.JWT_SECRET;
   process.env.JWT_SECRET = 'test-secret';

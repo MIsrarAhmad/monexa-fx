@@ -23,5 +23,20 @@ responses include `country`. It is `null` for existing users without one.
 The new fields are required for registration but remain optional in stored
 user records so older accounts continue to work.
 
+`GET /api/auth/me` also returns `fatherName`, `gender`, and `dateOfBirth`
+in `data.user`, with `null` for fields not yet set.
+`PUT /api/user/profile` accepts those three fields and `country` as optional
+updates, using the same validation rules as registration. Omitted fields are
+preserved, so existing clients and users may update their profile without
+filling in every field. Supplied fields cannot be blank or null. The response
+includes the saved values alongside the existing profile fields.
+
+Profile pictures are private to the signed-in user and stored in their user
+record. `PUT /api/user/profile-picture` accepts one multipart field named
+`picture` (JPG, PNG, or WebP, maximum 512 KB); replacing it overwrites the
+previous picture. `GET /api/user/profile-picture` returns the authenticated
+user's image with `Cache-Control: private, no-store`, or HTTP 404 when none
+exists. The profile page resizes selected images before uploading.
+
 Run focused tests with `node --test src/tests/registration.test.js` from the
 `Backend` directory.

@@ -1,7 +1,7 @@
 // Backend/src/controllers/authController.js
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import User from '../models/User.js';
+import User, { USER_GENDERS } from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
 import generateToken from '../utils/generateTokens.js';
@@ -26,7 +26,7 @@ export const registerUser = async (req, res, next) => {
         error: 'Please provide a name and father name of up to 100 characters each',
       });
     }
-    if (!['male', 'female', 'other', 'prefer_not_to_say'].includes(gender)) {
+    if (!USER_GENDERS.includes(gender)) {
       return res.status(400).json({ success: false, error: 'Please provide a valid gender' });
     }
     if (!isValidDateOfBirth(dateOfBirth)) {
@@ -350,6 +350,9 @@ export const getMe = async (req, res, next) => {
         user: {
           _id: user._id,
           name: user.name,
+          fatherName: user.fatherName || null,
+          gender: user.gender || null,
+          dateOfBirth: user.dateOfBirth || null,
           country: user.country || null,
           email: user.email,
           role: user.role,

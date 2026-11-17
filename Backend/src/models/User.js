@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import { isValidCountryCode } from '../utils/countries.js';
 import { isValidDateOfBirth } from '../utils/dateOfBirth.js';
 
+export const USER_GENDERS = ['male', 'female', 'other', 'prefer_not_to_say'];
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -18,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+      enum: USER_GENDERS,
     },
     dateOfBirth: {
       type: String,
@@ -27,6 +29,14 @@ const userSchema = new mongoose.Schema(
     country: {
       type: String,
       validate: isValidCountryCode,
+    },
+    profilePicture: {
+      type: Buffer,
+      select: false,
+    },
+    profilePictureType: {
+      type: String,
+      select: false,
     },
     email: {
       type: String,
