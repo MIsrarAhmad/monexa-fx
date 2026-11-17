@@ -6,6 +6,7 @@ import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
 import Toast from '../components/common/Toast';
+import CountryFlag from '../components/common/CountryFlag';
 import MarketOverviewWidget from '../components/dashboard/MarketOverviewWidget';
 import DepositModal from '../components/modals/DepositModal';
 import WithdrawModal from '../components/modals/WithdrawModal';
@@ -53,7 +54,7 @@ const UserHomePage = () => {
                   Welcome to MonexaFX
                 </h1>
                 <p className="text-2xl md:text-3xl font-extrabold text-cyan-400 mt-1">
-                  {user?.name || 'Investor'} 👋
+                  {user?.name || 'Investor'} <CountryFlag country={user?.country} /> 👋
                 </p>
                 <p className="text-xs md:text-sm text-slate-400 mt-1">
                   Manage capital deposits, track live market values, and execute instant crypto cashouts.

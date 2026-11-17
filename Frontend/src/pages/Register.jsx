@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, User, Users, Eye, EyeOff, ArrowRight, ShieldAlert } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
@@ -15,7 +16,11 @@ const Register = () => {
 
   const [formData, setFormData] = useState({
     name: '',
+    fatherName: '',
     email: '',
+    gender: '',
+    dateOfBirth: '',
+    country: '',
     password: '',
     referralCode: refCodeFromUrl,
   });
@@ -23,6 +28,33 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const today = new Date();
+  const latestDateOfBirth = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+  const regionNames = typeof Intl.DisplayNames === 'function'
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null;
+  const {
+    data: countries,
+    isPending: countriesLoading,
+    isError: countriesError,
+    refetch: retryCountries,
+  } = useQuery({
+    queryKey: ['registration-countries'],
+    queryFn: async () => {
+      const response = await axiosInstance.get('/auth/countries');
+      const codes = response.data.data?.countries;
+      if (!Array.isArray(codes) || codes.length === 0 || !codes.every((code) => typeof code === 'string' && /^[A-Z]{2}$/.test(code))) {
+        throw new Error('Invalid country list received');
+      }
+      return codes
+        .map((code) => ({ code, name: regionNames?.of(code) || code }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+  });
 
   useEffect(() => {
     if (refCodeFromUrl) {
@@ -64,7 +96,7 @@ const Register = () => {
         {/* Header */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-block hover:opacity-90 transition group">
-            <div className="w-14 h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
+            <div className="w-16 h-16 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
               <img
                 src="/monexafx-logo.png"
                 alt="MonexaFX Logo"
@@ -94,13 +126,16 @@ const Register = () => {
         {/* Form Fields */}
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Full Legal Name</label>
+            <label htmlFor="register-name" className="block text-xs font-semibold text-slate-300 mb-1">Full Legal Name</label>
             <div className="relative">
               <User className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
+                id="register-name"
                 name="name"
                 required
+                maxLength={100}
+                autoComplete="name"
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Jackie Chan..."
@@ -110,13 +145,30 @@ const Register = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+            <label htmlFor="register-father-name" className="block text-xs font-semibold text-slate-300 mb-1">Father's Name</label>
+            <input
+              id="register-father-name"
+              type="text"
+              name="fatherName"
+              required
+              maxLength={100}
+              placeholder="Bruce Lee"
+              value={formData.fatherName}
+              onChange={handleChange}
+              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 transition"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-email" className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
             <div className="relative">
               <Mail className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="email"
+                id="register-email"
                 name="email"
                 required
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@example.com"
@@ -126,11 +178,67 @@ const Register = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+            <label htmlFor="register-gender" className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
+            <select
+              id="register-gender"
+              name="gender"
+              required
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 transition"
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="register-date-of-birth" className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth</label>
+            <input
+              id="register-date-of-birth"
+              type="date"
+              name="dateOfBirth"
+              required
+              max={latestDateOfBirth}
+              autoComplete="bday"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 transition"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-country" className="block text-xs font-semibold text-slate-300 mb-1">Country</label>
+            <select
+              id="register-country"
+              name="country"
+              required
+              disabled={countriesLoading || countriesError}
+              value={formData.country}
+              onChange={handleChange}
+              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 transition disabled:opacity-60"
+            >
+              <option value="">{countriesLoading ? 'Loading countries...' : 'Select country'}</option>
+              {countries?.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}
+            </select>
+            {countriesError && (
+              <p className="text-xs text-rose-400 mt-1" role="alert">
+                Could not load countries.{' '}
+                <button type="button" onClick={() => retryCountries()} className="underline">Try again</button>
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="register-password" className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                id="register-password"
                 name="password"
                 required
                 minLength={PASSWORD_MIN_LENGTH}
@@ -153,13 +261,14 @@ const Register = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label htmlFor="register-referral" className="block text-xs font-semibold text-slate-300 mb-1">
               Invitation Code <span className="text-rose-400 font-normal">(Required)</span>
             </label>
             <div className="relative">
               <Users className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
               <input
                 type="text"
+                id="register-referral"
                 name="referralCode"
                 required
                 value={formData.referralCode}
@@ -175,7 +284,7 @@ const Register = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || countriesLoading || countriesError}
             className="w-full btn-neon-primary py-3 rounded-xl font-bold text-sm mt-2 flex items-center justify-center gap-2 disabled:opacity-50 transition"
           >
             {loading ? (

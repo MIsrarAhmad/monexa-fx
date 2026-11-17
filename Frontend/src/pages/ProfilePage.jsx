@@ -7,6 +7,7 @@ import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import BottomNav from '../components/layout/BottomNav';
 import Toast from '../components/common/Toast';
+import CountryFlag from '../components/common/CountryFlag';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const ProfilePage = () => {
@@ -94,6 +95,9 @@ const ProfilePage = () => {
             <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2">
               <User className="w-7 h-7 text-cyan-400" /> Account Settings
             </h1>
+            <p className="text-sm font-semibold text-white mt-2">
+              {user?.name || 'Investor'} <CountryFlag country={user?.country} />
+            </p>
             <p className="text-xs md:text-sm text-slate-400 mt-1">
               Manage your personal credentials, email address, and account password.
             </p>
@@ -107,8 +111,9 @@ const ProfilePage = () => {
 
               <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-semibold">Full Name</label>
+                  <label htmlFor="profile-name" className="block text-slate-400 mb-1 font-semibold">Full Name</label>
                   <input
+                    id="profile-name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}

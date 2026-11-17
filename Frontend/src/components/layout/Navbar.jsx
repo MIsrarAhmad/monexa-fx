@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import NotificationCenter from './NotificationCenter';
+import CountryFlag from '../common/CountryFlag';
 
 const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
@@ -78,7 +79,9 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
             </div>
             <div className="hidden sm:block">
-              <h4 className="text-sm font-semibold text-white leading-none">{user?.name || 'Investor'}</h4>
+              <h4 className="text-sm font-semibold text-white leading-none">
+                {user?.name || 'Investor'} <CountryFlag country={user?.country} />
+              </h4>
               <span className="text-xs text-cyan-400 font-medium">
                 {user?.role === 'admin' ? 'System Administrator' : 'VIP Investor'}
               </span>

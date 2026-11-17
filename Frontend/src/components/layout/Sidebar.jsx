@@ -23,6 +23,7 @@ import {
 import axiosInstance from '../../api/axiosInstance';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useSystemStore } from '../../store/useSystemStore';
+import CountryFlag from '../common/CountryFlag';
 
 const Sidebar = memo(
   ({
@@ -170,7 +171,9 @@ const Sidebar = memo(
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user?.name || 'Investor'}</p>
+              <p className="text-sm font-bold text-white truncate">
+                {user?.name || 'Investor'} <CountryFlag country={user?.country} />
+              </p>
 
               {isAdmin ? (
                 <p className="text-xs flex items-center gap-1 text-purple-400">

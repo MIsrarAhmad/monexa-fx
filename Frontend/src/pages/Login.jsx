@@ -65,7 +65,7 @@ const Login = () => {
         {/* Branding Header -> Redirects to Landing Page */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-block hover:opacity-90 transition group">
-            <div className="w-14 h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
+            <div className="w-16 h-16 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
               <img
                 src="/monexafx-logo.png"
                 alt="MONEXA FX Logo"
