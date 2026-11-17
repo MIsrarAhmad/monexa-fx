@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import MarketOverviewWidget from '../components/dashboard/MarketOverviewWidget';
-import LOGO_IMAGE_PATH from '../assets/logo.jpeg';
 
 const LandingPage = () => {
   const { isAuthenticated, role } = useAuthStore();
@@ -101,12 +100,11 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
           {/* Logo Image & Brand Title */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-            {/* Larger Logo Container: w-10 h-10 (mobile) / w-12 h-12 (desktop) */}
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">
               <img
-                src={LOGO_IMAGE_PATH}
+                src="/monexafx-logo.png"
                 alt="MonexaFX Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-0.5"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.parentNode.innerText = 'M';

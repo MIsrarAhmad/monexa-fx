@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, User, Users, Eye, EyeOff, ArrowRight, ShieldAlert } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
-import LOGO_IMAGE_PATH from '../assets/logo.jpeg';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const Register = () => {
@@ -56,6 +55,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen w-full bg-[#060a12] flex items-center justify-center p-4 relative overflow-hidden">
+      <title>MonexaFx-Sign Up</title>
       {/* Background Glow Orbs */}
       <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -64,11 +64,11 @@ const Register = () => {
         {/* Header */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-block hover:opacity-90 transition group">
-            <div className="w-14 h-14 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
+            <div className="w-14 h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3 group-hover:border-cyan-400 transition">
               <img
-                src={LOGO_IMAGE_PATH}
+                src="/monexafx-logo.png"
                 alt="MonexaFX Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-0.5"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.parentNode.innerText = 'M';

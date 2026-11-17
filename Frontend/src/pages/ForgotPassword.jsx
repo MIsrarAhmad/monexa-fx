@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Mail, ShieldAlert } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
-import LOGO_IMAGE_PATH from '../assets/logo.jpeg';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -34,8 +33,8 @@ const ForgotPassword = () => {
       <div className="neon-card bg-[#0b1322]/90 max-w-md w-full p-8 rounded-2xl relative border border-cyan-500/30 shadow-2xl z-10">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block hover:opacity-90 transition">
-            <div className="w-14 h-14 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3">
-              <img src={LOGO_IMAGE_PATH} alt="MONEXA FX Logo" className="w-full h-full object-cover" />
+            <div className="w-14 h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden mx-auto shadow-lg shadow-cyan-500/30 mb-3">
+              <img src="/monexafx-logo.png" alt="MONEXA FX Logo" className="w-full h-full object-contain p-0.5" />
             </div>
             <h1 className="text-2xl font-extrabold text-white tracking-wide">
               Reset <span className="text-cyan-400">Password</span>

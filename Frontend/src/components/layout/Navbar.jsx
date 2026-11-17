@@ -3,7 +3,6 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
-import LOGO_IMAGE_PATH from '../../assets/logo.jpeg';
 import NotificationCenter from './NotificationCenter';
 
 const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
@@ -12,10 +11,10 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const MONEXAFX_DISCORD_URL = 'https://discord.gg/tUM3Urq7';
 
   return (
-    <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-3 py-2.5 sm:px-4 sm:py-3 md:px-8">
+    <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-2 py-2.5 sm:px-4 sm:py-3 md:px-8">
       <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
         {/* Left Branding & Mobile Toggle */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={onMobileSidebarToggle}
             aria-label={isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -26,12 +25,12 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           </button>
 
           {/* Logo Image & Brand Name (Redirects to Landing Page) */}
-          <Link to="/" className="flex items-center gap-2.5 transition group">
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-md shadow-cyan-500/20 group-hover:border-cyan-400 transition">
+          <Link to="/" className="flex items-center gap-1.5 sm:gap-2.5 transition group">
+            <div className="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-md shadow-cyan-500/20 group-hover:border-cyan-400 transition">
               <img
-                src={LOGO_IMAGE_PATH}
+                src="/monexafx-logo.png"
                 alt="MONEXA FX Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-0.5"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.parentNode.innerText = 'M';
@@ -42,7 +41,7 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
 
             {/* Brand Title */}
             <div className="whitespace-nowrap">
-              <span className="text-base sm:text-xl font-extrabold tracking-wide text-white">
+              <span className="text-sm sm:text-xl font-extrabold tracking-wide text-white">
                 MONEXA <span className="text-cyan-400">FX</span>
               </span>
               <span className="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
@@ -53,7 +52,7 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
         </div>
 
         {/* Right chat link, notifications & user info */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
           {/* Chat link */}
           <a
             href={MONEXAFX_DISCORD_URL}
@@ -71,7 +70,7 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           <NotificationCenter />
 
           {/* User Profile Summary */}
-          <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-slate-800">
+          <div className="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-3 border-l border-slate-800">
             <div className="relative">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xs sm:text-sm shadow-md shadow-cyan-500/20">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

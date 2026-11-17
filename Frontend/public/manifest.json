@@ -9,9 +9,9 @@
   "theme_color": "#060a12",
   "icons": [
     {
-      "src": "/favicon.jpeg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
+      "src": "/monexafx-logo.png",
+      "sizes": "768x768",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
