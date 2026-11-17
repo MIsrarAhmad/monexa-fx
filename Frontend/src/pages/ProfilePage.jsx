@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.jsx
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Key, Save, CheckCircle } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
@@ -11,60 +11,80 @@ import Toast from '../components/common/Toast';
 import CountryFlag from '../components/common/CountryFlag';
 import UserAvatar from '../components/common/UserAvatar';
 import { useCountries } from '../hooks/useCountries';
-import { useProfilePicture } from '../hooks/useProfilePicture';
+import { profilePictureKey, useProfilePicture } from '../hooks/useProfilePicture';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
-const prepareProfilePicture = async (file) => {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    throw new Error('Choose a JPG, PNG, or WebP image.');
-  }
-  if (file.size > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.');
-
-  const url = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    await new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = () => reject(new Error('Could not open this image.'));
-      image.src = url;
-    });
-    const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not process this image.');
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const picture = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-    if (!picture || picture.size > 512 * 1024) throw new Error('Could not resize this image. Please choose another one.');
-    return picture;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+const prepareProfilePicture = async (image, dimensions, zoom, horizontal, vertical) => {
+  const { width, height } = dimensions;
+  const cropSize = Math.min(width, height) / zoom;
+  const left = (width - cropSize) * horizontal / 100;
+  const top = (height - cropSize) * vertical / 100;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not process this image.');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, 512, 512);
+  context.drawImage(image, left, top, cropSize, cropSize, 0, 0, 512, 512);
+  const picture = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+  if (!picture || picture.size > 512 * 1024) throw new Error('Could not resize this image. Please choose another one.');
+  return picture;
 };
 
 const ProfilePictureSettings = ({ user }) => {
-  const { isError, refetch } = useProfilePicture(user?._id);
-  const [uploading, setUploading] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: picture, isError, refetch } = useProfilePicture(user?._id);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [dimensions, setDimensions] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [horizontal, setHorizontal] = useState(50);
+  const [vertical, setVertical] = useState(50);
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const imageRef = useRef(null);
 
-  const handlePictureChange = async (event) => {
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  const handlePictureChange = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     setError('');
     setMessage('');
-    setUploading(true);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Choose an image smaller than 10 MB.');
+      return;
+    }
+    setDimensions(null);
+    setZoom(1);
+    setHorizontal(50);
+    setVertical(50);
+    setConfirmDelete(false);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    if (!imageRef.current || !dimensions) return;
+    setError('');
+    setMessage('');
+    setBusy(true);
     try {
-      const picture = await prepareProfilePicture(file);
+      const croppedPicture = await prepareProfilePicture(imageRef.current, dimensions, zoom, horizontal, vertical);
       const formData = new FormData();
-      formData.append('picture', picture, 'profile.jpg');
+      formData.append('picture', croppedPicture, 'profile.jpg');
       await axiosInstance.put('/user/profile-picture', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      setPreviewUrl('');
       try {
         await refetch({ throwOnError: true });
         setMessage('Profile picture updated successfully.');
@@ -74,19 +94,91 @@ const ProfilePictureSettings = ({ user }) => {
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Could not update profile picture.');
     } finally {
-      setUploading(false);
+      setBusy(false);
     }
   };
 
+  const handleDelete = async () => {
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      await axiosInstance.delete('/user/profile-picture');
+      queryClient.setQueryData(profilePictureKey(user?._id), null);
+      setConfirmDelete(false);
+      setMessage('Profile picture deleted successfully.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not delete profile picture.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const minDimension = dimensions ? Math.min(dimensions.width, dimensions.height) : 1;
+  const previewWidth = dimensions ? dimensions.width / minDimension * zoom * 100 : 100;
+  const previewHeight = dimensions ? dimensions.height / minDimension * zoom * 100 : 100;
+
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-4">
-      <UserAvatar user={user} className="w-20 h-20 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xl shrink-0" />
-      <div className="text-xs">
-        <label htmlFor="profile-picture" className="inline-block cursor-pointer rounded-xl bg-cyan-900 px-4 py-2 font-bold text-cyan-100 hover:bg-cyan-800">
-          {uploading ? 'Uploading...' : 'Upload or change picture'}
-        </label>
-        <input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={handlePictureChange} className="sr-only" />
-        <p className="mt-1 text-slate-400">JPG, PNG or WebP, up to 10 MB.</p>
+    <div className="mb-5 text-xs">
+      <div className="flex flex-wrap items-center gap-4">
+        <UserAvatar user={user} className="w-20 h-20 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xl shrink-0" />
+        <div>
+          <label htmlFor="profile-picture" className="inline-block cursor-pointer rounded-xl bg-cyan-900 px-4 py-2 font-bold text-cyan-100 hover:bg-cyan-800">
+            Upload or change picture
+          </label>
+          <input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={handlePictureChange} className="sr-only" />
+          <p className="mt-1 text-slate-400">JPG, PNG or WebP, up to 10 MB.</p>
+          {picture && !previewUrl && !confirmDelete && (
+            <button type="button" disabled={busy} onClick={() => { setConfirmDelete(true); setMessage(''); setError(''); }} className="mt-2 text-rose-400 underline">
+              Delete picture
+            </button>
+          )}
+        </div>
+      </div>
+      {previewUrl && (
+        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-4">
+          <p className="mb-2 font-semibold text-slate-200">Adjust your picture</p>
+          <div className="relative mx-auto h-44 w-44 overflow-hidden rounded-full border-2 border-cyan-400 bg-slate-800">
+            <img
+              ref={imageRef}
+              src={previewUrl}
+              alt="Profile picture preview"
+              onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
+              onError={() => { setPreviewUrl(''); setError('Could not open this image.'); }}
+              className="absolute"
+              style={{ maxWidth: 'none', width: `${previewWidth}%`, height: `${previewHeight}%`, left: `${-(previewWidth - 100) * horizontal / 100}%`, top: `${-(previewHeight - 100) * vertical / 100}%` }}
+            />
+          </div>
+          <div className="mt-4 space-y-3">
+            <label htmlFor="picture-zoom" className="block text-slate-300">Zoom</label>
+            <input id="picture-zoom" type="range" min="1" max="3" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} disabled={busy} className="w-full accent-cyan-400" />
+            <label htmlFor="picture-horizontal" className="block text-slate-300">Horizontal position</label>
+            <input id="picture-horizontal" type="range" min="0" max="100" value={horizontal} onChange={(event) => setHorizontal(Number(event.target.value))} disabled={busy} className="w-full accent-cyan-400" />
+            <label htmlFor="picture-vertical" className="block text-slate-300">Vertical position</label>
+            <input id="picture-vertical" type="range" min="0" max="100" value={vertical} onChange={(event) => setVertical(Number(event.target.value))} disabled={busy} className="w-full accent-cyan-400" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={handleSave} disabled={busy || !dimensions} className="rounded-xl bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">
+              {busy ? 'Saving...' : 'Save picture'}
+            </button>
+            <button type="button" onClick={() => { setPreviewUrl(''); setError(''); }} disabled={busy} className="rounded-xl border border-slate-600 px-4 py-2 text-slate-200 disabled:opacity-50">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {confirmDelete && (
+        <div className="mt-3 rounded-xl border border-rose-800 bg-rose-950/40 p-3">
+          <p className="text-rose-200">Delete your profile picture?</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={handleDelete} disabled={busy} className="rounded-lg bg-rose-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
+              {busy ? 'Deleting...' : 'Confirm delete'}
+            </button>
+            <button type="button" onClick={() => setConfirmDelete(false)} disabled={busy} className="rounded-lg border border-slate-600 px-3 py-2 text-slate-200 disabled:opacity-50">Cancel</button>
+          </div>
+        </div>
+      )}
+      <div>
         {message && <p className="mt-1 text-emerald-400" role="status">{message}</p>}
         {error && <p className="mt-1 text-rose-400" role="alert">{error}</p>}
         {isError && (
