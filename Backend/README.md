@@ -37,6 +37,8 @@ record. `PUT /api/user/profile-picture` accepts one multipart field named
 previous picture. `GET /api/user/profile-picture` returns the authenticated
 user's image with `Cache-Control: private, no-store`, or HTTP 404 when none
 exists. The profile page resizes selected images before uploading.
+`DELETE /api/user/profile-picture` removes the authenticated user's picture;
+it succeeds even when the user has no picture.
 
 Run focused tests with `node --test src/tests/registration.test.js` from the
 `Backend` directory.

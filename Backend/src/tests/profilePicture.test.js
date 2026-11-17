@@ -4,7 +4,7 @@ import express from 'express';
 import User from '../models/User.js';
 import userRoutes from '../routes/userRoutes.js';
 import { uploadProfilePicture } from '../middleware/uploadProfilePicture.js';
-import { getProfilePicture, updateProfilePicture } from '../controllers/userController.js';
+import { getProfilePicture, updateProfilePicture, deleteProfilePicture } from '../controllers/userController.js';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lX8AAAAASUVORK5CYII=', 'base64');
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
@@ -12,7 +12,8 @@ const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 test('profile pictures require authentication and support private replacement', async (t) => {
   const pictures = new Map();
   t.mock.method(User, 'findByIdAndUpdate', async (id, update) => {
-    pictures.set(id, update.$set);
+    if (update.$set) pictures.set(id, update.$set);
+    if (update.$unset) pictures.delete(id);
     return { _id: id };
   });
   t.mock.method(User, 'findById', (id) => ({
@@ -26,6 +27,7 @@ test('profile pictures require authentication and support private replacement', 
   });
   app.get('/test/profile-picture', getProfilePicture);
   app.put('/test/profile-picture', uploadProfilePicture, updateProfilePicture);
+  app.delete('/test/profile-picture', deleteProfilePicture);
   app.use((err, req, res, next) => res.status(500).json({ error: err.message }));
 
   const server = await new Promise((resolve) => {
@@ -41,6 +43,7 @@ test('profile pictures require authentication and support private replacement', 
 
   assert.equal((await fetch(`${base}/api/user/profile-picture`)).status, 401);
   assert.equal((await fetch(`${base}/api/user/profile-picture`, { method: 'PUT', body: new FormData() })).status, 401);
+  assert.equal((await fetch(`${base}/api/user/profile-picture`, { method: 'DELETE' })).status, 401);
   assert.equal(User.schema.path('profilePicture').options.select, false);
   assert.equal(User.schema.path('profilePictureType').options.select, false);
   assert.equal((await fetch(`${base}/test/profile-picture`)).status, 404);
@@ -62,4 +65,9 @@ test('profile pictures require authentication and support private replacement', 
   const replaced = await fetch(`${base}/test/profile-picture`);
   assert.equal(replaced.headers.get('content-type'), 'image/jpeg');
   assert.deepEqual(Buffer.from(await replaced.arrayBuffer()), jpeg);
+  assert.equal((await fetch(`${base}/test/profile-picture`, { method: 'DELETE', headers: { 'x-test-user': 'user-b' } })).status, 200);
+  assert.equal((await fetch(`${base}/test/profile-picture`)).status, 200);
+  assert.equal((await fetch(`${base}/test/profile-picture`, { method: 'DELETE' })).status, 200);
+  assert.equal((await fetch(`${base}/test/profile-picture`)).status, 404);
+  assert.equal((await fetch(`${base}/test/profile-picture`, { method: 'DELETE' })).status, 200);
 });
