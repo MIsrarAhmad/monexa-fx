@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, User, Users, Eye, EyeOff, ArrowRight, ShieldAlert } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
+import { useCountries } from '../hooks/useCountries';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const Register = () => {
@@ -37,27 +37,12 @@ const Register = () => {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
-  const regionNames = typeof Intl.DisplayNames === 'function'
-    ? new Intl.DisplayNames(['en'], { type: 'region' })
-    : null;
   const {
     data: countries,
     isPending: countriesLoading,
     isError: countriesError,
     refetch: retryCountries,
-  } = useQuery({
-    queryKey: ['registration-countries'],
-    queryFn: async () => {
-      const response = await axiosInstance.get('/auth/countries');
-      const codes = response.data.data?.countries;
-      if (!Array.isArray(codes) || codes.length === 0 || !codes.every((code) => typeof code === 'string' && /^[A-Z]{2}$/.test(code))) {
-        throw new Error('Invalid country list received');
-      }
-      return codes
-        .map((code) => ({ code, name: regionNames?.of(code) || code }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    },
-  });
+  } = useCountries();
 
   useEffect(() => {
     if (refCodeFromUrl) {

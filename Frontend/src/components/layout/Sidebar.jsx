@@ -24,6 +24,7 @@ import axiosInstance from '../../api/axiosInstance';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useSystemStore } from '../../store/useSystemStore';
 import CountryFlag from '../common/CountryFlag';
+import UserAvatar from '../common/UserAvatar';
 
 const Sidebar = memo(
   ({
@@ -157,8 +158,9 @@ const Sidebar = memo(
         {/* User / Admin Profile Card */}
         <div className="mb-6 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
           <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold ${
+            <UserAvatar
+              user={user}
+              className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold shrink-0 ${
                 isAdmin
                   ? 'border-purple-400 bg-purple-950 text-purple-300'
                   : kycStatus === 'APPROVED'
@@ -167,9 +169,7 @@ const Sidebar = memo(
                   ? 'border-amber-400 bg-amber-950 text-amber-300'
                   : 'border-slate-600 bg-slate-800 text-slate-300'
               }`}
-            >
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
+            />
             <div className="min-w-0">
               <p className="text-sm font-bold text-white truncate">
                 {user?.name || 'Investor'} <CountryFlag country={user?.country} />

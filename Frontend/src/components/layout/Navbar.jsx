@@ -5,6 +5,7 @@ import { MessageCircle, Menu, X, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import NotificationCenter from './NotificationCenter';
 import CountryFlag from '../common/CountryFlag';
+import UserAvatar from '../common/UserAvatar';
 
 const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const user = useAuthStore((state) => state.user);
@@ -73,9 +74,7 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           {/* User Profile Summary */}
           <div className="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-3 border-l border-slate-800">
             <div className="relative">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xs sm:text-sm shadow-md shadow-cyan-500/20">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </div>
+              <UserAvatar user={user} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xs sm:text-sm shadow-md shadow-cyan-500/20" />
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
             </div>
             <div className="hidden sm:block">
