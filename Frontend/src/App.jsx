@@ -17,53 +17,57 @@ import TermsPolicyPage from './pages/TermsPolicyPage';
 import AboutUsPage from './pages/AboutUsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { useAuthStore } from './store/useAuthStore';
+import StartupSplash from './components/layout/StartupSplash';
 
 function App() {
   const { isAuthenticated, role } = useAuthStore();
 
   return (
-    <Routes>
-      {/* Public Landing Page */}
-      <Route path="/" element={<LandingPage />} />
+    <>
+      <Routes>
+        {/* Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
 
-      {/* Public Auth Routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Public Auth Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Protected User Dashboard Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['user']} />}>
-        <Route path="/dashboard-home" element={<UserHomePage />} />
-        <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/market" element={<MarketPage />} />
-        <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/about-us" element={<AboutUsPage />} />
-        <Route path="/verification" element={<VerificationPage />} />
-        <Route path="/referrals-page" element={<ReferralsPage />} />
-        <Route path="/terms-policy" element={<TermsPolicyPage />} />
-      </Route>
+        {/* Protected User Dashboard Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['user']} />}>
+          <Route path="/dashboard-home" element={<UserHomePage />} />
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/market" element={<MarketPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/about-us" element={<AboutUsPage />} />
+          <Route path="/verification" element={<VerificationPage />} />
+          <Route path="/referrals-page" element={<ReferralsPage />} />
+          <Route path="/terms-policy" element={<TermsPolicyPage />} />
+        </Route>
 
-      {/* Protected Admin Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Route>
+        {/* Protected Admin Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
 
-      {/* Smart Fallback Redirect based on Role */}
-      <Route
-        path="*"
-        element={
-          !isAuthenticated ? (
-            <Navigate to="/" replace />
-          ) : role === 'admin' ? (
-            <Navigate to="/admin" replace />
-          ) : (
-            <Navigate to="/dashboard-home" replace />
-          )
-        }
-      />
-    </Routes>
+        {/* Smart Fallback Redirect based on Role */}
+        <Route
+          path="*"
+          element={
+            !isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : role === 'admin' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/dashboard-home" replace />
+            )
+          }
+        />
+      </Routes>
+      <StartupSplash />
+    </>
   );
 }
 
