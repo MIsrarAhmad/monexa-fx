@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import MarketOverviewWidget from '../components/dashboard/MarketOverviewWidget';
+import PublicHeader from '../components/layout/PublicHeader';
 
 const LandingPage = () => {
   const { isAuthenticated, role } = useAuthStore();
@@ -95,66 +96,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col font-sans">
-      {/* 1. Header Navigation */}
-      <header className="sticky top-0 z-40 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-3 py-3 sm:px-4 sm:py-4 md:px-8">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
-          {/* Logo Image & Brand Title */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">
-              <img
-                src="/monexafx-logo.png"
-                alt="MonexaFX Logo"
-                className="w-full h-full object-contain p-0.5"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentNode.innerText = 'M';
-                  e.target.parentNode.className += ' text-cyan-400 font-extrabold text-base sm:text-lg';
-                }}
-              />
-            </div>
-            <span className="text-base sm:text-2xl font-extrabold tracking-wide text-white whitespace-nowrap">
-              MONEXA <span className="text-cyan-400">FX</span>
-            </span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-300">
-            <a href="#about" className="hover:text-cyan-400 transition">About Us</a>
-            <a href="#policy" className="hover:text-cyan-400 transition">Investment Policy</a>
-            <a href="#referral" className="hover:text-cyan-400 transition">Referral Program</a>
-            <a href="#terms" className="hover:text-cyan-400 transition">Terms & Risk</a>
-          </nav>
-
-          {/* Auth Action Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {isAuthenticated ? (
-              <Link
-                to={portalPath}
-                className="btn-neon-primary px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 whitespace-nowrap"
-              >
-                <span>{role === 'admin' ? 'Executive Portal' : 'Go to Dashboard'}</span>
-                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              </Link>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold border border-cyan-800 text-cyan-300 hover:bg-cyan-950/50 transition whitespace-nowrap"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/register"
-                  className="btn-neon-primary px-2.5 py-1.5 sm:px-5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 whitespace-nowrap"
-                >
-                  <span>Get Started</span>
-                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* 2. Hero Section */}
       <section className="relative overflow-hidden pt-10 pb-16 px-4 md:px-8 max-w-7xl mx-auto w-full">
@@ -280,7 +222,7 @@ const LandingPage = () => {
 
           <div className="flex items-center gap-6">
             <Link to={portalPath} className="hover:text-cyan-400 transition">Portal</Link>
-            <a href="#policy" className="hover:text-cyan-400 transition">Policy</a>
+            <Link to="/terms-policy" className="hover:text-cyan-400 transition">Policy</Link>
           </div>
         </div>
       </footer>

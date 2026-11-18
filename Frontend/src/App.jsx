@@ -33,6 +33,9 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/about-us" element={<AboutUsPage />} />
+        <Route path="/referrals-page" element={<ReferralsPage />} />
+        <Route path="/terms-policy" element={<TermsPolicyPage />} />
 
         {/* Protected User Dashboard Routes */}
         <Route element={<ProtectedRoute allowedRoles={['user']} />}>
@@ -41,10 +44,7 @@ function App() {
           <Route path="/market" element={<MarketPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/about-us" element={<AboutUsPage />} />
           <Route path="/verification" element={<VerificationPage />} />
-          <Route path="/referrals-page" element={<ReferralsPage />} />
-          <Route path="/terms-policy" element={<TermsPolicyPage />} />
         </Route>
 
         {/* Protected Admin Routes */}

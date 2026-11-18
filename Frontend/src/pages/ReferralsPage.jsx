@@ -1,5 +1,6 @@
 // src/pages/ReferralsPage.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users,
@@ -16,23 +17,22 @@ import {
 } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
-import Navbar from '../components/layout/Navbar';
-import Sidebar from '../components/layout/Sidebar';
-import BottomNav from '../components/layout/BottomNav';
+import InformationPageLayout from '../components/layout/InformationPageLayout';
 import Toast from '../components/common/Toast';
 
 const FRONTEND_URL = 'https://monexafx.com';
 
 const ReferralsPage = () => {
-  const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isUser = useAuthStore((state) => state.isAuthenticated && state.role === 'user' && Boolean(state.user?._id));
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
   const { data: wallet } = useQuery({
-    queryKey: ['wallet'],
+    queryKey: ['wallet', user?._id],
+    enabled: isUser,
     queryFn: async () => {
       const res = await axiosInstance.get('/wallet/me');
       return res.data.data;
@@ -40,7 +40,8 @@ const ReferralsPage = () => {
   });
 
   const { data: referralData } = useQuery({
-    queryKey: ['referrals'],
+    queryKey: ['referrals', user?._id],
+    enabled: isUser,
     queryFn: async () => {
       const res = await axiosInstance.get('/referrals/my-tree');
       return res.data.data;
@@ -63,20 +64,7 @@ const ReferralsPage = () => {
   const referralBalance = wallet?.referralBalance || 0;
 
   return (
-    <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
-      <Navbar
-        isMobileSidebarOpen={sidebarOpen}
-        onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-      />
-
-      <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onCloseSidebar={() => setSidebarOpen(false)}
-          onLogout={logout}
-        />
-
-        <main className="flex-1 min-w-0">
+    <InformationPageLayout>
           {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl neon-card p-6 mb-6 border border-cyan-500/30">
             <div className="flex items-center gap-2 mb-1">
@@ -96,6 +84,7 @@ const ReferralsPage = () => {
           </div>
 
           {/* Invitation Link & Earnings Stats */}
+          {isUser ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div className="lg:col-span-2 neon-card p-6 rounded-2xl border border-slate-800">
               <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
@@ -120,7 +109,6 @@ const ReferralsPage = () => {
                   <span>Copy Link</span>
                 </button>
               </div>
-
               {/* Reward Highlights */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-800 pt-4">
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
@@ -171,6 +159,13 @@ const ReferralsPage = () => {
               </div>
             </div>
           </div>
+
+          ) : (
+            <div className="neon-card p-6 rounded-2xl border border-slate-800 mb-6 text-xs text-slate-300">
+              <p>{isAuthenticated ? 'Personal referral details are available for user accounts.' : 'Sign in to view your personal referral link and earnings.'}</p>
+              {!isAuthenticated && <Link to="/login" className="inline-block mt-3 text-cyan-400 font-semibold underline">Sign In</Link>}
+            </div>
+          )}
 
           {/* Program Rules & Qualification Criteria */}
           <div className="space-y-4 text-xs">
@@ -258,12 +253,8 @@ const ReferralsPage = () => {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-
-      <BottomNav />
       <Toast message={toastMsg} />
-    </div>
+    </InformationPageLayout>
   );
 };
 

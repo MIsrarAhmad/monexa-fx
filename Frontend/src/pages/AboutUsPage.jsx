@@ -1,5 +1,4 @@
 // src/pages/AboutUsPage.jsx
-import React, { useState } from 'react';
 import {
   Globe,
   Target,
@@ -14,29 +13,11 @@ import {
   Clock,
   ArrowUpRight,
 } from 'lucide-react';
-import { useAuthStore } from '../store/useAuthStore';
-import Navbar from '../components/layout/Navbar';
-import Sidebar from '../components/layout/Sidebar';
-import BottomNav from '../components/layout/BottomNav';
+import InformationPageLayout from '../components/layout/InformationPageLayout';
 
 const AboutUsPage = () => {
-  const logout = useAuthStore((state) => state.logout);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col relative pb-20 md:pb-6">
-      <Navbar
-        isMobileSidebarOpen={sidebarOpen}
-        onMobileSidebarToggle={() => setSidebarOpen((open) => !open)}
-      />
-
-      <div className="max-w-7xl mx-auto w-full flex gap-6 px-4 py-6 md:px-8 flex-1">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onCloseSidebar={() => setSidebarOpen(false)}
-          onLogout={logout}
-        />
-
-        <main className="flex-1 min-w-0">
+    <InformationPageLayout>
           {/* Main Hero Header */}
           <div className="relative overflow-hidden rounded-2xl neon-card p-6 mb-6 border border-cyan-500/30">
             <div className="flex items-center gap-2 mb-1">
@@ -253,11 +234,7 @@ const AboutUsPage = () => {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-
-      <BottomNav />
-    </div>
+    </InformationPageLayout>
   );
 };
 
