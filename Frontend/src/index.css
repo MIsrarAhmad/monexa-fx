@@ -47,6 +47,130 @@ h1, h2, h3 {
   box-shadow: 0 8px 30px rgba(0, 5, 16, 0.22);
 }
 
+.public-header {
+  padding: 0.75rem clamp(0.5rem, 2vw, 2rem) 0;
+}
+
+.public-header-shell, .public-mobile-menu {
+  max-width: 80rem;
+  margin-inline: auto;
+  border: 1px solid rgba(112, 203, 255, 0.55);
+  background: linear-gradient(110deg, rgba(14, 37, 74, 0.94), rgba(4, 17, 40, 0.94) 55%, rgba(12, 39, 78, 0.94));
+  box-shadow: inset 0 1px 0 rgba(219, 244, 255, 0.24), 0 10px 32px rgba(0, 7, 24, 0.5), 0 0 18px rgba(0, 142, 255, 0.13);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+.public-header-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 4.5rem;
+  padding: 0.5rem clamp(0.5rem, 1.5vw, 1.25rem);
+  border-radius: 1.2rem;
+}
+
+.public-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.public-brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(0, 192, 255, 0.75);
+  border-radius: 50%;
+  background: #07162f;
+  box-shadow: 0 0 16px rgba(0, 164, 255, 0.45);
+}
+
+.public-brand-name {
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.public-brand-name > span, .public-brand-name b { color: #09baf5; }
+.public-brand-name small {
+  display: block;
+  margin-top: -0.1rem;
+  color: #c8d8ec;
+  font-size: 0.57rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.public-desktop-nav { display: none; }
+.public-header-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+.public-nav-link, .public-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #e7f2ff;
+  white-space: nowrap;
+  font-weight: 700;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+.public-nav-link svg, .public-action svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+.public-nav-link { padding: 0.75rem; border-radius: 0.85rem; font-size: 0.75rem; }
+.public-nav-link:hover { color: #8deaff; background: rgba(15, 98, 171, 0.2); }
+.public-nav-link.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 117, 244, 0.8), rgba(0, 58, 162, 0.75));
+  box-shadow: inset 0 0 0 1px rgba(65, 195, 255, 0.55), 0 0 18px rgba(0, 139, 255, 0.35);
+}
+.public-action { min-height: 2.5rem; padding: 0.5rem 0.8rem; border-radius: 999px; font-size: 0.7rem; }
+.public-action-outline { border: 1px solid #6cc9fb; background: rgba(4, 19, 42, 0.65); }
+.public-action-outline:hover { background: rgba(18, 83, 137, 0.55); }
+.public-action-primary {
+  border: 1px solid rgba(82, 231, 255, 0.8);
+  background: linear-gradient(135deg, #00aeea, #005ce2);
+  box-shadow: inset 0 1px 0 rgba(220, 251, 255, 0.45), 0 0 18px rgba(0, 155, 255, 0.35);
+}
+.public-action-primary:hover { box-shadow: inset 0 1px 0 rgba(220, 251, 255, 0.6), 0 0 24px rgba(0, 174, 255, 0.55); }
+.public-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #a7eaff;
+  border: 1px solid rgba(100, 203, 255, 0.5);
+  border-radius: 0.8rem;
+  background: rgba(7, 35, 67, 0.85);
+}
+.public-menu-toggle svg { width: 1.25rem; height: 1.25rem; }
+.public-mobile-menu { margin-top: 0.5rem; padding: 0.5rem; border-radius: 1rem; }
+.public-mobile-menu[hidden] { display: none; }
+.public-mobile-nav { display: grid; }
+.public-mobile-nav .public-nav-link { justify-content: flex-start; min-height: 2.75rem; }
+
+@media (max-width: 480px) {
+  .public-header-shell { min-height: 3.75rem; }
+  .public-brand { gap: 0.35rem; }
+  .public-brand-logo { width: 2.25rem; height: 2.25rem; }
+  .public-brand-name { font-size: 0.78rem; }
+  .public-brand-name small { font-size: 0.46rem; }
+  .public-header-actions { gap: 0.25rem; }
+  .public-action { min-height: 2.25rem; padding: 0.4rem 0.55rem; font-size: 0.62rem; }
+  .public-action svg { display: none; }
+  .public-menu-toggle { width: 2.25rem; height: 2.25rem; }
+}
+
+@media (min-width: 1024px) {
+  .public-desktop-nav { display: flex; align-items: center; }
+  .public-menu-toggle, .public-mobile-menu { display: none; }
+}
+
 .btn-neon-primary {
   background: linear-gradient(120deg, #0879d8, #00a9d2);
   color: #ffffff;

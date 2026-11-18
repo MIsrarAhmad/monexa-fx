@@ -1,24 +1,47 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
+import { ArrowRight, Gift, Home, Menu, Rocket, ShieldCheck, UserRound, UsersRound, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
-const InformationLinks = ({ className }) => (
+const informationLinks = [
+  { to: '/about-us', label: 'About Us', Icon: UsersRound },
+  { to: '/terms-policy', label: 'Investment Policy', Icon: ShieldCheck },
+  { to: '/referrals-page', label: 'Referral Program', Icon: Gift },
+];
+
+const InformationLinks = ({ className, includeHome = false, onNavigate }) => (
   <nav aria-label="Information" className={className}>
-    <Link to="/about-us" className="whitespace-nowrap hover:text-cyan-400 transition">About Us</Link>
-    <Link to="/terms-policy" className="whitespace-nowrap hover:text-cyan-400 transition">Investment Policy</Link>
-    <Link to="/referrals-page" className="whitespace-nowrap hover:text-cyan-400 transition">Referral Program</Link>
+    {includeHome && (
+      <NavLink to="/" end className="public-nav-link" onClick={onNavigate}>
+        <Home aria-hidden="true" /> <span>Home</span>
+      </NavLink>
+    )}
+    {informationLinks.map(({ to, label, Icon }) => (
+      <NavLink key={to} to={to} className="public-nav-link" onClick={onNavigate}>
+        <Icon aria-hidden="true" /> <span>{label}</span>
+      </NavLink>
+    ))}
   </nav>
 );
 
 export default function PublicHeader() {
   const { isAuthenticated, role } = useAuthStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
   const portalPath = role === 'admin' ? '/admin' : '/dashboard-home';
 
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape' && menuOpen) {
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    }
+  };
+
   return (
-    <header className="site-glass-header sticky top-0 z-40 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-3 py-3 sm:px-4 sm:py-4 md:px-8">
-      <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">
+    <header className="public-header sticky top-0 z-40" onKeyDown={handleKeyDown}>
+      <div className="public-header-shell">
+        <Link to="/" className="public-brand" onClick={() => setMenuOpen(false)}>
+          <div className="public-brand-logo">
             <img
               src="/monexafx-logo.png"
               alt="MonexaFX Logo"
@@ -30,31 +53,46 @@ export default function PublicHeader() {
               }}
             />
           </div>
-          <span className="text-base sm:text-2xl font-extrabold tracking-wide text-white whitespace-nowrap">
-            MONEXA <span className="text-cyan-400">FX</span>
+          <span className="public-brand-name">
+            MONEXA <span>FX</span>
+            <small>Trade <b>•</b> Invest <b>•</b> Grow</small>
           </span>
         </Link>
 
-        <InformationLinks className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-300" />
+        <InformationLinks includeHome className="public-desktop-nav" />
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <div className="public-header-actions">
           {isAuthenticated ? (
-            <Link to={portalPath} className="btn-neon-primary px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+            <Link to={portalPath} className="public-action public-action-primary" onClick={() => setMenuOpen(false)}>
               <span>{role === 'admin' ? 'Executive Portal' : 'Go to Dashboard'}</span>
-              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <ArrowRight aria-hidden="true" />
             </Link>
           ) : (
             <>
-              <Link to="/login" className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold border border-cyan-800 text-cyan-300 hover:bg-cyan-950/50 transition whitespace-nowrap">Sign In</Link>
-              <Link to="/register" className="btn-neon-primary px-2.5 py-1.5 sm:px-5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 whitespace-nowrap">
-                <span>Get Started</span>
-                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <Link to="/login" className="public-action public-action-outline" onClick={() => setMenuOpen(false)}>
+                <UserRound aria-hidden="true" /> <span>Sign In</span>
+              </Link>
+              <Link to="/register" className="public-action public-action-primary" onClick={() => setMenuOpen(false)}>
+                <Rocket aria-hidden="true" /> <span>Get Started</span> <ArrowRight aria-hidden="true" />
               </Link>
             </>
           )}
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="public-menu-toggle"
+            aria-label={menuOpen ? 'Close information menu' : 'Open information menu'}
+            aria-expanded={menuOpen}
+            aria-controls="public-mobile-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </button>
         </div>
       </div>
-      <InformationLinks className="md:hidden flex items-center justify-center gap-4 overflow-x-auto pt-3 text-[11px] font-semibold text-slate-300" />
+      <div id="public-mobile-menu" className="public-mobile-menu" hidden={!menuOpen}>
+        <InformationLinks className="public-mobile-nav" onNavigate={() => setMenuOpen(false)} />
+      </div>
     </header>
   );
 }
