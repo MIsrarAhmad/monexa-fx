@@ -15,7 +15,7 @@ export default function PublicHeader() {
   const portalPath = role === 'admin' ? '/admin' : '/dashboard-home';
 
   return (
-    <header className="sticky top-0 z-40 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-3 py-3 sm:px-4 sm:py-4 md:px-8">
+    <header className="site-glass-header sticky top-0 z-40 bg-[#070c16]/90 backdrop-blur-md border-b border-cyan-900/30 px-3 py-3 sm:px-4 sm:py-4 md:px-8">
       <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
         <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
           <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-cyan-500/20 group-hover:border-cyan-400 transition">

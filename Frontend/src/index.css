@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   background-color: #060a12;
   color: #f3f4f6;
   overflow-x: hidden;
@@ -13,45 +13,144 @@ body {
   }
 }
 
-/* Custom Glowing Card Borders & Glassmorphism */
+#root > .min-h-screen.bg-\[\#060a12\] {
+  background-color: #060c18;
+  background-image:
+    radial-gradient(ellipse at 82% 2%, rgba(12, 89, 154, 0.22), transparent 34rem),
+    radial-gradient(ellipse at 8% 30%, rgba(6, 95, 119, 0.12), transparent 31rem),
+    linear-gradient(160deg, #07101f 0%, #060b16 48%, #080f1c 100%);
+}
+
+h1, h2, h3 {
+  font-family: 'Bahnschrift', 'Trebuchet MS', sans-serif;
+}
+
 .neon-card {
-  background: rgba(13, 22, 38, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 180, 256, 0.25);
-  box-shadow: 0 0 15px rgba(0, 140, 255, 0.08);
-  transition: all 0.3s ease;
+  background: linear-gradient(145deg, rgba(28, 54, 80, 0.59), rgba(11, 23, 40, 0.72) 58%, rgba(9, 20, 35, 0.82));
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(129, 199, 237, 0.23);
+  box-shadow: inset 0 1px 0 rgba(220, 244, 255, 0.09), 0 18px 45px rgba(0, 5, 15, 0.24);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .neon-card:hover {
-  border-color: rgba(0, 210, 255, 0.5);
-  box-shadow: 0 0 22px rgba(0, 180, 256, 0.2);
+  border-color: rgba(120, 209, 250, 0.38);
+  box-shadow: inset 0 1px 0 rgba(220, 244, 255, 0.12), 0 20px 50px rgba(0, 8, 24, 0.32);
 }
 
-/* Neon Button Styling */
+.site-glass-header, .site-glass-bottom {
+  background: rgba(6, 15, 29, 0.76);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  border-color: rgba(120, 195, 234, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 5, 16, 0.22);
+}
+
 .btn-neon-primary {
-  background: linear-gradient(135deg, #0088ff 0%, #00d4ff 100%);
+  background: linear-gradient(120deg, #0879d8, #00a9d2);
   color: #ffffff;
-  box-shadow: 0 0 15px rgba(0, 180, 255, 0.4);
-  transition: all 0.3s ease;
+  border: 1px solid rgba(185, 241, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 25px rgba(0, 136, 220, 0.2);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .btn-neon-primary:hover {
-  box-shadow: 0 0 25px rgba(0, 212, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 28px rgba(0, 166, 230, 0.34);
   transform: translateY(-1px);
 }
 
 .btn-neon-outline {
-  background: rgba(0, 140, 255, 0.08);
-  border: 1px solid rgba(0, 212, 255, 0.5);
-  color: #00d4ff;
-  box-shadow: 0 0 10px rgba(0, 180, 256, 0.1);
-  transition: all 0.3s ease;
+  background: rgba(77, 156, 196, 0.08);
+  border: 1px solid rgba(125, 207, 240, 0.36);
+  color: #b4eaff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 .btn-neon-outline:hover {
-  background: rgba(0, 180, 255, 0.2);
+  background: rgba(30, 137, 186, 0.2);
   color: #ffffff;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #8ee8ff;
+  outline-offset: 3px;
+}
+
+.landing-content::before {
+  content: '';
+  position: absolute;
+  width: min(45vw, 540px);
+  aspect-ratio: 1;
+  top: -110px;
+  right: -80px;
+  border: 1px solid rgba(123, 212, 255, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px rgba(66, 162, 209, 0.025), 0 0 0 100px rgba(66, 162, 209, 0.018);
+  pointer-events: none;
+}
+
+.landing-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  position: relative;
+  padding: 2.5rem 0 3rem;
+}
+
+.landing-eyebrow {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-title {
+  max-width: 15ch;
+  text-wrap: balance;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
+  color: #eff8ff;
+}
+
+.landing-carousel {
+  width: 100%;
+}
+
+.landing-slide {
+  padding-inline: 3.25rem;
+  background: linear-gradient(145deg, rgba(48, 96, 130, 0.44), rgba(11, 29, 48, 0.84) 62%, rgba(8, 21, 37, 0.9));
+  border-color: rgba(147, 215, 245, 0.28);
+  box-shadow: inset 0 1px 0 rgba(237, 250, 255, 0.14), 0 22px 60px rgba(0, 7, 23, 0.4);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.landing-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.landing-highlights .neon-card {
+  border-color: rgba(129, 199, 237, 0.2);
+}
+
+@media (min-width: 900px) {
+  .landing-intro {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: clamp(2rem, 5vw, 5rem);
+    align-items: start;
+    padding: 5rem 0 6rem;
+  }
+  .landing-eyebrow { grid-column: 1; grid-row: 1; }
+  .landing-title { grid-column: 1; grid-row: 2; }
+  .landing-carousel { grid-column: 2; grid-row: 1 / 4; align-self: center; margin: 0; }
+  .landing-actions { grid-column: 1; grid-row: 3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-card, .btn-neon-primary, .btn-neon-outline { transition: none; }
+  .btn-neon-primary:hover { transform: none; }
 }
 
 /* Custom Scrollbars */

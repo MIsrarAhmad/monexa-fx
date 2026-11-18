@@ -95,22 +95,22 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#060a12] text-slate-100 flex flex-col landing-page">
       <PublicHeader />
 
       {/* 2. Hero Section */}
-      <section className="relative overflow-hidden pt-10 pb-16 px-4 md:px-8 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-4xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-xs font-bold mb-4">
+      <section className="landing-content relative overflow-hidden pt-10 pb-16 px-4 md:px-8 max-w-7xl mx-auto w-full">
+        <div className="landing-intro mb-8">
+          <div className="landing-eyebrow inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-xs font-bold mb-4">
             <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
             <span>Welcome to Monexa Fx</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6">
+          <h1 className="landing-title text-3xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-6">
             Discover a Smarter Approach to Digital Investment.
           </h1>
 
           {/* Interactive Auto-Changing Card Carousel */}
-          <div className="relative max-w-3xl mx-auto my-6">
+          <div className="landing-carousel relative max-w-3xl mx-auto my-6">
             <div className="overflow-hidden rounded-2xl relative shadow-2xl">
               <div
                 className="flex transition-transform duration-700 ease-in-out"
@@ -121,7 +121,7 @@ const LandingPage = () => {
                   return (
                     <div
                       key={card.id}
-                      className={`w-full shrink-0 p-6 md:p-8 rounded-2xl bg-gradient-to-br ${card.gradient} border ${card.border} text-left flex flex-col justify-between min-h-[220px]`}
+                      className={`landing-slide w-full shrink-0 p-6 md:p-8 rounded-2xl bg-gradient-to-br ${card.gradient} border ${card.border} text-left flex flex-col justify-between min-h-[220px]`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-3">
@@ -147,12 +147,14 @@ const LandingPage = () => {
             {/* Carousel Controls */}
             <button
               onClick={handlePrevSlide}
+              aria-label="Previous slide"
               className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-950/70 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-900 transition"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={handleNextSlide}
+              aria-label="Next slide"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-950/70 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-900 transition"
             >
               <ChevronRight className="w-5 h-5" />
@@ -164,6 +166,8 @@ const LandingPage = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
+                  aria-label={`Show slide ${index + 1}`}
+                  aria-pressed={currentSlide === index}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     currentSlide === index ? 'w-8 bg-cyan-400' : 'w-2 bg-slate-700 hover:bg-slate-500'
                   }`}
@@ -172,7 +176,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+          <div className="landing-actions flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
             <Link
               to={isAuthenticated ? portalPath : '/register'}
               className="btn-neon-primary w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
@@ -191,7 +195,7 @@ const LandingPage = () => {
         </div>
 
         {/* Core Highlight Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+        <div className="landing-highlights grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
           <div className="neon-card p-5 rounded-2xl border border-cyan-500/20">
             <DollarSign className="w-8 h-8 text-cyan-400 mb-3" />
             <h3 className="text-base font-bold text-white mb-1">1% Daily Returns</h3>

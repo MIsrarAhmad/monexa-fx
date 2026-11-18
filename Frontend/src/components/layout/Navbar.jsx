@@ -13,7 +13,7 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const MONEXAFX_DISCORD_URL = 'https://discord.gg/tUM3Urq7';
 
   return (
-    <header className="sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-2 py-2.5 sm:px-4 sm:py-3 md:px-8">
+    <header className="site-glass-header sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-2 py-2.5 sm:px-4 sm:py-3 md:px-8">
       <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">

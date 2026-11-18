@@ -8,7 +8,7 @@ const BottomNav = memo(() => {
   const inactiveClass = 'text-slate-400 hover:text-cyan-400 flex flex-col items-center gap-1 text-[10px]';
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-30 bg-[#070c16]/95 border-t border-cyan-900/40 py-2.5 px-4 md:hidden backdrop-blur-lg">
+    <div className="site-glass-bottom fixed bottom-0 inset-x-0 z-30 bg-[#070c16]/95 border-t border-cyan-900/40 py-2.5 px-4 md:hidden backdrop-blur-lg">
       <div className="flex justify-around items-center text-center">
         {/* 1. Home (User Dashboard Welcome Home Page) */}
         <NavLink to="/dashboard-home" className={({ isActive }) => (isActive ? activeClass : inactiveClass)}>
