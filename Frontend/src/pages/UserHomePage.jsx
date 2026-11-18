@@ -50,7 +50,7 @@ const UserHomePage = () => {
                     Live Session
                   </span>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-white whitespace-nowrap">
                   Welcome to MonexaFX
                 </h1>
                 <p className="text-2xl md:text-3xl font-extrabold text-cyan-400 mt-1">
