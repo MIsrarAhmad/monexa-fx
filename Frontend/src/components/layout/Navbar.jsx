@@ -13,22 +13,23 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
   const MONEXAFX_DISCORD_URL = 'https://discord.gg/tUM3Urq7';
 
   return (
-    <header className="site-glass-header sticky top-0 z-50 bg-[#070c16] border-b border-cyan-900/30 px-2 py-2.5 sm:px-4 sm:py-3 md:px-8">
-      <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
+    <header className="public-header sticky top-0 z-50">
+      <div className="public-header-shell account-header-shell">
         {/* Left Branding & Mobile Toggle */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
+            type="button"
             onClick={onMobileSidebarToggle}
             aria-label={isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={isMobileSidebarOpen}
-            className="md:hidden text-gray-300 hover:text-cyan-400 focus:outline-none p-1.5 rounded-lg bg-gray-900/50"
+            className="account-menu-toggle"
           >
-            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMobileSidebarOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
 
           {/* Logo Image & Brand Name (Redirects to Landing Page) */}
-          <Link to="/" className="flex items-center gap-1.5 sm:gap-2.5 transition group">
-            <div className="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-md shadow-cyan-500/20 group-hover:border-cyan-400 transition">
+          <Link to="/" className="public-brand">
+            <div className="public-brand-logo">
               <img
                 src="/monexafx-logo.png"
                 alt="MONEXA FX Logo"
@@ -42,25 +43,24 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
             </div>
 
             {/* Brand Title */}
-            <div className="whitespace-nowrap">
-              <span className="text-sm sm:text-xl font-extrabold tracking-wide text-white">
-                MONEXA <span className="text-cyan-400">FX</span>
-              </span>
-              <span className="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
-                Pro V2.4
-              </span>
-            </div>
+            <span className="public-brand-name">
+              MONEXA <span>FX</span>
+              <small>Trade <b>•</b> Invest <b>•</b> Grow</small>
+            </span>
           </Link>
+          <span className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+            Pro V2.4
+          </span>
         </div>
 
         {/* Right chat link, notifications & user info */}
-        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+        <div className="account-header-actions">
           {/* Chat link */}
           <a
             href={MONEXAFX_DISCORD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative p-1.5 sm:p-2 rounded-xl bg-cyan-950/80 text-cyan-300 hover:text-white hover:bg-cyan-900/80 border border-cyan-700/50 transition flex items-center gap-1.5 text-xs font-bold shadow-md shadow-cyan-950/40"
+            className="account-chat"
             title="Open Discord"
             aria-label="Open Discord"
           >
@@ -72,13 +72,13 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           <NotificationCenter />
 
           {/* User Profile Summary */}
-          <div className="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-3 border-l border-slate-800">
+          <div className="account-profile">
             <div className="relative">
               <UserAvatar user={user} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center text-cyan-300 font-bold text-xs sm:text-sm shadow-md shadow-cyan-500/20" />
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
             </div>
-            <div className="hidden sm:block">
-              <h4 className="text-sm font-semibold text-white leading-none">
+            <div className="hidden sm:block min-w-0">
+              <h4 className="text-sm font-semibold text-white leading-none truncate">
                 {user?.name || 'Investor'} <CountryFlag country={user?.country} />
               </h4>
               <span className="text-xs text-cyan-400 font-medium">
