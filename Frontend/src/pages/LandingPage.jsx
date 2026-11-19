@@ -221,7 +221,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-300">MonexaFX Financial Portal</span>
-            <span>&copy; {new Date().getFullYear()} All rights reserved.</span>
+            <span>&copy; 2016 All rights reserved.</span>
           </div>
 
           <div className="flex items-center gap-6">
