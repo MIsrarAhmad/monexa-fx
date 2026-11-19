@@ -43,9 +43,9 @@ export default function PublicHeader() {
         <Link to="/" className="public-brand" onClick={() => setMenuOpen(false)}>
           <div className="public-brand-logo">
             <img
-              src="/monexafx-logo.png"
+              src="/monexafx-header-logo.png"
               alt="MonexaFX Logo"
-              className="w-full h-full object-contain p-0.5"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.parentNode.innerText = 'M';

@@ -82,13 +82,8 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  overflow: hidden;
-  border: 1px solid rgba(0, 192, 255, 0.75);
-  border-radius: 50%;
-  background: #07162f;
-  box-shadow: 0 0 16px rgba(0, 164, 255, 0.45);
+  width: 3.125rem;
+  height: 3.125rem;
 }
 
 .public-brand-name {
@@ -236,7 +231,7 @@ h1, h2, h3 {
 @media (max-width: 480px) {
   .public-header-shell { min-height: 3.75rem; }
   .public-brand { gap: 0.35rem; }
-  .public-brand-logo { width: 2.25rem; height: 2.25rem; }
+  .public-brand-logo { width: 2.5rem; height: 2.5rem; }
   .public-brand-name { font-size: 0.78rem; }
   .public-brand-name small { font-size: 0.46rem; }
   .public-header-actions { gap: 0.25rem; }

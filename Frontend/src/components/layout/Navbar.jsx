@@ -31,9 +31,9 @@ const Navbar = memo(({ onMobileSidebarToggle, isMobileSidebarOpen }) => {
           <Link to="/" className="public-brand">
             <div className="public-brand-logo">
               <img
-                src="/monexafx-logo.png"
+                src="/monexafx-header-logo.png"
                 alt="MONEXA FX Logo"
-                className="w-full h-full object-contain p-0.5"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.parentNode.innerText = 'M';
