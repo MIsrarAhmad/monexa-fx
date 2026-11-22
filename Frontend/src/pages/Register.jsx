@@ -11,7 +11,6 @@ const Register = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCodeFromUrl = searchParams.get('ref') || '';
-
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const [formData, setFormData] = useState({
@@ -31,6 +30,7 @@ const Register = () => {
   const [confirmError, setConfirmError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registrationResult, setRegistrationResult] = useState(null);
   const today = new Date();
   const latestDateOfBirth = [
     today.getFullYear(),
@@ -68,10 +68,15 @@ const Register = () => {
 
     try {
       const response = await axiosInstance.post('/auth/register', formData);
-      const { user, token } = response.data.data;
-
-      setAuth({ user, token });
-      navigate('/dashboard', { replace: true });
+      const data = response.data.data;
+      if (data?.user && data?.token) {
+        setAuth({ user: data.user, token: data.token });
+        navigate('/dashboard', { replace: true });
+      } else if (data?.verificationRequired && data?.email) {
+        setRegistrationResult({ ...data, message: response.data.message });
+      } else {
+        throw new Error('Unexpected registration response');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed. Please check your registration details.');
     } finally {
@@ -117,7 +122,16 @@ const Register = () => {
           </div>
         )}
 
-        {/* Form Fields */}
+        {registrationResult ? (
+          <div className="space-y-4 text-sm text-slate-300" role="status">
+            <p>{registrationResult.message}</p>
+            <p>Check <strong className="text-white">{registrationResult.email}</strong> and your spam folder. The link expires after 24 hours.</p>
+            <button type="button" onClick={() => navigate('/verify-email', { state: { email: registrationResult.email } })} className="w-full btn-neon-outline py-3 rounded-xl font-bold">
+              Resend verification email
+            </button>
+            <Link to="/login" className="block text-center text-cyan-400 font-bold">Return to sign in</Link>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label htmlFor="register-name" className="block text-xs font-semibold text-slate-300 mb-1">Full Legal Name</label>
@@ -325,6 +339,7 @@ const Register = () => {
             )}
           </button>
         </form>
+        )}
 
         <div className="mt-6 pt-5 border-t border-slate-800 text-center text-xs text-slate-400">
           Already registered?{' '}

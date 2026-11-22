@@ -39,6 +39,15 @@ import Toast from '../components/common/Toast';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
+const countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const countryName = (code) => code ? countryNames.of(code) || code : 'Unknown';
+const withdrawalEligibilityLabel = {
+  ELIGIBLE: 'Eligible',
+  EMAIL_VERIFICATION_REQUIRED: 'Email verification required',
+  KYC_REQUIRED: 'KYC required',
+  WALLET_MISSING: 'No wallet',
+  PROFIT_LOCKED: 'Profit lock',
+};
 const formatCountdown = (milliseconds) => {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -71,6 +80,7 @@ const AdminDashboard = () => {
   // User Directory Search & Filter States
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('ALL');
+  const [userPage, setUserPage] = useState(1);
   const [selectedDeleteUser, setSelectedDeleteUser] = useState(null);
   const [deleteConfirmationEmail, setDeleteConfirmationEmail] = useState('');
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
@@ -96,6 +106,27 @@ const AdminDashboard = () => {
       const res = await axiosInstance.get('/admin/stats');
       return res.data.data;
     },
+  });
+
+  const { data: userOverview, isLoading: loadingUserOverview, isError: userOverviewError } = useQuery({
+    queryKey: ['adminUserOverview', userSearchQuery, userStatusFilter, userPage],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/admin/user-overview', {
+        params: { search: userSearchQuery, status: userStatusFilter, page: userPage },
+      });
+      return res.data.data;
+    },
+    enabled: activeTab === 'users',
+    refetchInterval: activeTab === 'users' ? 15000 : false,
+  });
+
+  const { data: countryCounts, isLoading: loadingCountries, isError: countryCountsError } = useQuery({
+    queryKey: ['adminCountryCounts'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/admin/country-counts');
+      return res.data.data.countries;
+    },
+    enabled: activeTab === 'overview',
   });
 
   const {
@@ -195,6 +226,7 @@ const AdminDashboard = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pendingWithdrawals'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['adminUserOverview'] });
       showToast(data.message);
       setProcessingId(null);
     },
@@ -214,6 +246,7 @@ const AdminDashboard = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pendingDeposits'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['adminUserOverview'] });
       showToast(data.message);
       setProcessingId(null);
     },
@@ -251,6 +284,8 @@ const AdminDashboard = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['adminUserOverview'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCountryCounts'] });
       queryClient.invalidateQueries({ queryKey: ['pendingDeposits'] });
       queryClient.invalidateQueries({ queryKey: ['pendingWithdrawals'] });
       queryClient.invalidateQueries({ queryKey: ['adminPendingKycs'] });
@@ -338,15 +373,7 @@ const AdminDashboard = () => {
   };
 
   const metrics = statsData?.metrics;
-  const userList = statsData?.userInvestmentDetails || [];
-
-  const filteredUsers = userList.filter((u) => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
-    const matchesStatus = userStatusFilter === 'ALL' || u.status === userStatusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const overviewUsers = userOverview?.users || [];
   const filteredLedgerUsers = ledgerUsers.filter((ledgerUser) => (
     ledgerUser.name.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
     || ledgerUser.email.toLowerCase().includes(ledgerSearchQuery.toLowerCase())
@@ -422,21 +449,21 @@ const AdminDashboard = () => {
                   badgeText="Total"
                 />
                 <StatCard
-                  title="System Liquidity"
+                  title="Current Main Balance"
                   value={`$${loadingStats ? '...' : (metrics?.totalLiquidity?.toFixed(2) || '0.00')}`}
                   unit="USDT"
                   icon={Vault}
-                  subText="Invested Main Capital"
-                  badgeText="Invested"
+                  subText="Wallet principal balances"
+                  badgeText="Principal"
                   accentColor="cyan"
                 />
                 <StatCard
-                  title="Total Withdrawable"
+                  title="Total Wallet Balance"
                   value={`$${loadingStats ? '...' : (metrics?.totalWithdrawableBalance?.toFixed(2) || '0.00')}`}
                   unit="USDT"
                   icon={Wallet}
-                  subText="System Total Assets"
-                  badgeText="Withdrawable"
+                  subText="Principal + profit + referral"
+                  badgeText="Before eligibility"
                   accentColor="emerald"
                 />
                 <StatCard
@@ -450,7 +477,7 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              <div className="neon-card p-6 rounded-2xl border border-slate-800">
+              <div className="neon-card p-4 sm:p-6 rounded-2xl border border-slate-800">
                 <h3 className="text-base font-bold text-white mb-4">User Investment Segmentation</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-900/60 p-4 rounded-xl border border-emerald-900/40">
@@ -475,6 +502,23 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
+              <section className="neon-card p-4 sm:p-6 rounded-2xl border border-slate-800">
+                <div className="mb-4">
+                  <h3 className="text-base font-bold text-white">Users by country</h3>
+                  <p className="mt-1 text-xs text-slate-400">Registered clients, including accounts without a valid country.</p>
+                </div>
+                {loadingCountries ? <p className="text-sm text-slate-400">Loading countries...</p>
+                  : countryCountsError ? <p role="alert" className="text-sm text-rose-400">Could not load country counts.</p>
+                    : !countryCounts?.length ? <p className="text-sm text-slate-400">No registered clients yet.</p>
+                      : <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {countryCounts.map(({ country, count }) => (
+                          <li key={country || 'unknown'} className="flex items-center justify-between gap-3 rounded-xl border border-slate-700/60 bg-slate-900/50 px-4 py-3 text-sm">
+                            <span className="min-w-0 truncate text-slate-300">{countryName(country)}{country && <span className="ml-2 text-xs text-slate-500">{country}</span>}</span>
+                            <span className="font-bold tabular-nums text-cyan-300">{count}</span>
+                          </li>
+                        ))}
+                      </ul>}
+              </section>
             </div>
           )}
 
@@ -1131,7 +1175,7 @@ const AdminDashboard = () => {
             <div className="neon-card p-6 rounded-2xl border border-slate-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-cyan-400" /> User Directory & Threshold Status
+                  <Users className="w-5 h-5 text-cyan-400" /> User Financial Overview
                 </h3>
 
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -1141,7 +1185,8 @@ const AdminDashboard = () => {
                       type="text"
                       placeholder="Search name or email..."
                       value={userSearchQuery}
-                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      onChange={(e) => { setUserSearchQuery(e.target.value); setUserPage(1); }}
+                      aria-label="Search users by name or email"
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                     />
                   </div>
@@ -1156,7 +1201,8 @@ const AdminDashboard = () => {
                     ].map((st) => (
                       <button
                         key={st.key}
-                        onClick={() => setUserStatusFilter(st.key)}
+                        onClick={() => { setUserStatusFilter(st.key); setUserPage(1); }}
+                        aria-pressed={userStatusFilter === st.key}
                         className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition ${
                           userStatusFilter === st.key
                             ? 'bg-purple-600 text-white shadow-md'
@@ -1170,40 +1216,57 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+              <p className="mb-4 text-xs leading-relaxed text-slate-400">
+                Deposits and referral earned are lifetime credited totals. Wallet total is principal + profit + referral after pending reservations. Requestable gross is a periodically refreshed estimate before the 20% fee: email verification (for new accounts), approved KYC and either the first 24-hour grace period (with no pending or completed request) or $50 in new profit and referral credits are required. A valid TRC20 address is also required; balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
+              </p>
+              <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
+              <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
+                <table className="w-full min-w-[1200px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
                       <th className="py-3 px-3">Name & Email</th>
-                      <th className="py-3 px-3">Invested Capital</th>
-                      <th className="py-3 px-3">Total Withdrawable</th>
+                      <th className="py-3 px-3">Country</th>
+                      <th className="py-3 px-3">Completed deposits</th>
+                      <th className="py-3 px-3">Current principal</th>
+                      <th className="py-3 px-3">Wallet balance</th>
+                      <th className="py-3 px-3">Requestable gross</th>
+                      <th className="py-3 px-3">Referral earned</th>
                       <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3 text-right">Deficit Below $300</th>
+                      <th className="py-3 px-3 text-right">Principal shortfall to $300</th>
                       <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {loadingStats ? (
+                    {loadingUserOverview ? (
                       <tr>
-                        <td colSpan={6} className="py-4 text-center text-slate-500">
+                        <td colSpan={10} className="py-4 text-center text-slate-500">
                           Loading user directory...
                         </td>
                       </tr>
-                    ) : filteredUsers.length === 0 ? (
+                    ) : userOverviewError ? (
+                      <tr><td colSpan={10} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
+                    ) : overviewUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-4 text-center text-slate-500">
+                        <td colSpan={10} className="py-4 text-center text-slate-500">
                           No users matched your search or filter criteria.
                         </td>
                       </tr>
                     ) : (
-                      filteredUsers.map((u) => (
+                      overviewUsers.map((u) => (
                         <tr key={u.userId} className="hover:bg-slate-900/40">
                           <td className="py-3 px-3">
                             <div className="font-bold text-white">{u.name}</div>
                             <div className="text-[11px] text-slate-400">{u.email}</div>
                           </td>
-                          <td className="py-3 px-3 font-bold text-cyan-400">${u.mainBalance.toFixed(2)} USDT</td>
-                          <td className="py-3 px-3 font-bold text-emerald-400">${u.totalWithdrawable.toFixed(2)} USDT</td>
+                          <td className="py-3 px-3 text-slate-300">{countryName(u.country)}</td>
+                          <td className="py-3 px-3 text-cyan-300">{formatUsdt(u.totalDeposited)}</td>
+                          <td className="py-3 px-3 font-bold text-cyan-400">{formatUsdt(u.mainBalance)}</td>
+                          <td className="py-3 px-3 font-bold text-slate-200">{formatUsdt(u.walletTotal)}</td>
+                          <td className="py-3 px-3 font-bold text-emerald-400">
+                            {formatUsdt(u.requestableGross)}
+                            <div className="mt-1 text-[10px] font-normal text-slate-400">{withdrawalEligibilityLabel[u.withdrawalEligibility] || 'Unknown'}</div>
+                          </td>
+                          <td className="py-3 px-3 text-amber-300">{formatUsdt(u.totalReferralEarned)}</td>
                           <td className="py-3 px-3">
                             {u.status === 'ACTIVE_QUALIFIED' && (
                               <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
@@ -1248,6 +1311,15 @@ const AdminDashboard = () => {
                   </tbody>
                 </table>
               </div>
+              {userOverview && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                  <span>{userOverview.pagination.total} matching users · Page {userOverview.pagination.page} of {Math.max(1, userOverview.pagination.pages)}</span>
+                  <div className="flex gap-2">
+                    <button type="button" disabled={userPage <= 1} onClick={() => setUserPage((page) => page - 1)} className="rounded-lg border border-slate-700 px-3 py-2 hover:bg-slate-800 disabled:opacity-40">Previous</button>
+                    <button type="button" disabled={userPage >= userOverview.pagination.pages} onClick={() => setUserPage((page) => page + 1)} className="rounded-lg border border-slate-700 px-3 py-2 hover:bg-slate-800 disabled:opacity-40">Next</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

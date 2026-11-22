@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import UserHomePage from './pages/UserHomePage';
 import UserDashboard from './pages/UserDashboard';
 import MarketPage from './pages/MarketPage';
@@ -33,6 +34,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/referrals-page" element={<ReferralsPage />} />
         <Route path="/terms-policy" element={<TermsPolicyPage />} />

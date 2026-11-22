@@ -11,6 +11,7 @@ const Login = () => {
   const [searchParams] = useSearchParams();
   const isExpired = searchParams.get('expired') === 'true';
   const passwordReset = searchParams.get('passwordReset') === 'true';
+  const emailVerified = searchParams.get('emailVerified') === 'true';
 
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -96,6 +97,11 @@ const Login = () => {
             Password reset successfully. Please sign in with your new password.
           </div>
         )}
+        {emailVerified && (
+          <div className="mb-5 p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/80 text-emerald-300 text-xs">
+            Email verified successfully. Please sign in.
+          </div>
+        )}
 
         {/* Form Fields */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -161,6 +167,9 @@ const Login = () => {
 
         {/* Footer Navigation */}
         <div className="mt-6 pt-5 border-t border-slate-800 text-center text-xs text-slate-400">
+          <Link to="/verify-email" className="block text-cyan-400 font-bold hover:underline mb-3">
+            Resend verification email
+          </Link>
           Don't have an account yet?{' '}
           <Link to="/register" className="text-cyan-400 font-bold hover:underline">
             Create Account
