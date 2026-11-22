@@ -21,7 +21,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
   });
 
   // 2. Fetch KYC status
-  const { data: kycData } = useQuery({
+  const { data: kycData, isLoading: loadingKyc, isError: kycError, isFetching: fetchingKyc, refetch: refetchKyc } = useQuery({
     queryKey: ['kyc-status-withdraw-modal'],
     queryFn: async () => {
       const res = await axiosInstance.get('/kyc/me');
@@ -130,7 +130,16 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
           </div>
         )}
 
-        {!isKycApproved ? (
+        {loadingKyc || (fetchingKyc && (kycError || !kycData?.kycStatus)) ? (
+          <div role="status" className="p-6 text-center text-xs text-slate-400">Loading verification status...</div>
+        ) : kycError || !kycData?.kycStatus ? (
+          <div role="alert" className="p-4 bg-rose-950/40 border border-rose-800/60 rounded-xl text-center space-y-3">
+            <p className="text-xs text-slate-300">Could not load your verification status. Please try again.</p>
+            <button type="button" onClick={() => refetchKyc()} className="btn-neon-outline px-4 py-2 rounded-xl text-xs font-bold">
+              Retry
+            </button>
+          </div>
+        ) : !isKycApproved ? (
           <div className="p-4 bg-rose-950/40 border border-rose-800/60 rounded-xl text-center space-y-3">
             <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
             <h4 className="text-sm font-bold text-white">KYC Verification Required</h4>
