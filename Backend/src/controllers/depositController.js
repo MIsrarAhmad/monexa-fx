@@ -5,6 +5,7 @@ import { MINIMUM_INITIAL_DEPOSIT, OFFICIAL_TRC20_DEPOSIT_ADDRESS } from '../conf
 import { notifyUser } from '../services/notificationService.js';
 import { getMinimumDepositForBalance } from '../utils/depositRules.js';
 import Wallet from '../models/Wallet.js';
+import { sendTransactionEmail } from '../utils/transactionEmail.js';
 
 // @desc    Submit Manual USDT TRC20 Deposit Proof
 // @route   POST /api/deposits/submit
@@ -94,6 +95,7 @@ export const submitManualDeposit = async (req, res, next) => {
       status: 'PENDING',
       description: description || 'USDT TRC20 deposit proof submitted',
     });
+    void sendTransactionEmail(transaction, 'requested', user);
     await notifyUser({
       userId: req.user._id,
       type: 'DEPOSIT_PENDING',

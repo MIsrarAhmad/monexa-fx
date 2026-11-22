@@ -18,7 +18,30 @@
 `{ "success": true, "data": { "countries": ["AD", "AE", "..."] } }`.
 The array contains the complete list used by registration validation.
 
-Registration, login, `GET /api/auth/me`, and `PUT /api/user/profile`
+New registrations receive an email verification link valid for 24 hours.
+`POST /api/auth/register` returns `verificationRequired`, `verificationEmailSent`,
+and `email`, but does not issue a session token. If email delivery fails, the
+account is still created and the response explicitly reports that delivery
+could not be confirmed. A slow SMTP delivery may still arrive afterwards.
+`POST /api/auth/verify-email` accepts `{ "token": "..." }` and consumes the
+link once. `POST /api/auth/resend-verification` accepts `{ "email": "..." }`,
+rotates the token, and is rate limited; sign-in is blocked for new unverified
+accounts. Existing accounts without an email-verification flag are unaffected.
+`SMTP_USER` and `SMTP_PASS` must be configured for email delivery; set
+`SMTP_HOST`, `SMTP_PORT`, `FROM_EMAIL`, and `FRONTEND_URL` as appropriate for
+the deployment. Users can request another link if the first expires or sending fails.
+For a staged release, deploy the compatible frontend first, confirm that it is
+live, then deploy the backend; the previous frontend expects an immediate token
+and cannot handle the new registration response.
+
+Manual deposit and withdrawal requests send an email when submitted and another
+when an administrator resolves them. Pending emails do not confirm a deposit
+credit or a withdrawal payment. A completed withdrawal email reports the
+administrator's status and does not independently confirm an on-chain transfer.
+Transaction emails are best-effort: delivery failures are logged and do not
+roll back transactions, and there is no automatic delivery retry queue.
+
+Login, `GET /api/auth/me`, and `PUT /api/user/profile`
 responses include `country`. It is `null` for existing users without one.
 The new fields are required for registration but remain optional in stored
 user records so older accounts continue to work.

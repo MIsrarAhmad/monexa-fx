@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
+import nodemailer from 'nodemailer';
+import jwt from 'jsonwebtoken';
 import express from 'express';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
-import { getMe, loginUser, registerUser } from '../controllers/authController.js';
+import { getMe, loginUser, registerUser, resendVerification, verifyEmail } from '../controllers/authController.js';
 import { updateProfile } from '../controllers/userController.js';
 import { COUNTRY_CODES, isValidCountryCode } from '../utils/countries.js';
 import { isValidDateOfBirth } from '../utils/dateOfBirth.js';
 import authRoutes from '../routes/authRoutes.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const validRegistration = {
   name: ' Jane Doe ',
@@ -137,7 +141,11 @@ test('registration stores normalized data and resolves the required referral', a
   assert.equal(saved.email, 'jane@example.com');
   assert.equal(saved.referredBy, referrer._id);
   assert.equal(await bcrypt.compare(validRegistration.password, saved.password), true);
-  assert.equal(res.body.data.user.country, 'GB');
+  assert.equal(saved.emailVerified, false);
+  assert.match(saved.emailVerificationToken, /^[a-f0-9]{64}$/);
+  assert.equal(res.body.data.verificationRequired, true);
+  assert.equal(res.body.data.verificationEmailSent, false);
+  assert.equal(res.body.data.token, undefined);
   assert.equal(createReferral.mock.callCount(), 1);
   assert.deepEqual(find.mock.calls[1].arguments[0].$or, [
     { referralCode: 'INVITER' }, { adminReferralCode: 'INVITER' },
@@ -145,6 +153,117 @@ test('registration stores normalized data and resolves the required referral', a
   const rejected = await invoke(registerUser, { ...validRegistration, referralCode: 'missing' });
   assert.equal(rejected.statusCode, 400);
   assert.match(rejected.body.error, /Invalid referral/);
+});
+
+test('new accounts cannot sign in until email verification; legacy accounts remain usable', async (t) => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'test-secret';
+  t.after(() => {
+    if (previousSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousSecret;
+  });
+  const user = { _id: 'user-id', name: 'Jane', email: 'jane@example.com', role: 'user',
+    password: await bcrypt.hash('Password1!', 4), emailVerified: false };
+  t.mock.method(User, 'findOne', () => ({ select: async () => user }));
+  t.mock.method(Wallet, 'findOne', async () => null);
+  const login = () => invoke(loginUser, { email: user.email, password: 'Password1!' });
+  assert.equal((await login()).statusCode, 403);
+  user.emailVerified = true;
+  assert.equal((await login()).statusCode, 200);
+  delete user.emailVerified;
+  assert.equal((await login()).statusCode, 200);
+});
+
+test('protected routes reject sessions belonging to unverified new accounts', async (t) => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'test-secret';
+  t.after(() => {
+    if (previousSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previousSecret;
+  });
+  const user = { _id: 'user-id', emailVerified: false };
+  t.mock.method(User, 'findById', () => ({ select: async () => user }));
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  const check = async () => {
+    const res = response();
+    let nextCalled = false;
+    await protect({ headers: { authorization: `Bearer ${token}` } }, res, () => { nextCalled = true; });
+    return { res, nextCalled };
+  };
+  assert.equal((await check()).res.statusCode, 403);
+  user.emailVerified = true;
+  assert.equal((await check()).nextCalled, true);
+  delete user.emailVerified;
+  assert.equal((await check()).nextCalled, true);
+});
+
+test('verification token is hashed, expires and is consumed only once', async (t) => {
+  const token = 'ab'.repeat(32);
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  let stored = { emailVerified: false, emailVerificationToken: hash, emailVerificationExpires: new Date(Date.now() + 60000) };
+  t.mock.method(User, 'findOneAndUpdate', async (query, update) => {
+    assert.equal(query.emailVerificationToken, hash);
+    if (!stored || stored.emailVerified || stored.emailVerificationExpires <= query.emailVerificationExpires.$gt) return null;
+    assert.equal(update.$set.emailVerified, true);
+    stored = null;
+    return { emailVerified: true };
+  });
+  assert.equal((await invoke(verifyEmail, { token: 'bad' })).statusCode, 400);
+  assert.equal((await invoke(verifyEmail, { token })).statusCode, 200);
+  assert.equal((await invoke(verifyEmail, { token })).statusCode, 400);
+  stored = { emailVerified: false, emailVerificationToken: hash, emailVerificationExpires: new Date(0) };
+  assert.equal((await invoke(verifyEmail, { token })).statusCode, 400);
+});
+
+test('verification resend rotates the token and reports delivery failure', async (t) => {
+  const previousUser = process.env.SMTP_USER;
+  const previousPass = process.env.SMTP_PASS;
+  process.env.SMTP_USER = 'smtp-test';
+  process.env.SMTP_PASS = 'smtp-test';
+  t.after(() => {
+    if (previousUser === undefined) delete process.env.SMTP_USER; else process.env.SMTP_USER = previousUser;
+    if (previousPass === undefined) delete process.env.SMTP_PASS; else process.env.SMTP_PASS = previousPass;
+  });
+  let savedToken;
+  let sentMessage;
+  let deliveryFails = false;
+  t.mock.method(User, 'findOneAndUpdate', async (query, update) => {
+    assert.deepEqual(query, { email: 'jane@example.com', emailVerified: false });
+    savedToken = update.$set.emailVerificationToken;
+    return { name: 'Jane', email: query.email };
+  });
+  t.mock.method(nodemailer, 'createTransport', () => ({
+    sendMail: async (message) => {
+      if (deliveryFails) throw new Error('test delivery failure');
+      sentMessage = message;
+      return { messageId: 'test' };
+    },
+  }));
+  assert.equal((await invoke(resendVerification, { email: ' Jane@example.com ' })).statusCode, 200);
+  const token = new URL(sentMessage.html.match(/href="([^"]+)"/)[1].replace(/&amp;/g, '&')).searchParams.get('token');
+  assert.equal(savedToken, crypto.createHash('sha256').update(token).digest('hex'));
+  deliveryFails = true;
+  assert.equal((await invoke(resendVerification, { email: 'jane@example.com' })).statusCode, 503);
+});
+
+test('verification resend reports an unconfirmed delivery instead of waiting indefinitely', async (t) => {
+  const previousUser = process.env.SMTP_USER;
+  const previousPass = process.env.SMTP_PASS;
+  process.env.SMTP_USER = 'smtp-test';
+  process.env.SMTP_PASS = 'smtp-test';
+  t.after(() => {
+    if (previousUser === undefined) delete process.env.SMTP_USER; else process.env.SMTP_USER = previousUser;
+    if (previousPass === undefined) delete process.env.SMTP_PASS; else process.env.SMTP_PASS = previousPass;
+  });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  t.mock.method(console, 'error', () => {});
+  t.mock.method(User, 'findOneAndUpdate', async () => ({ name: 'Jane', email: 'jane@example.com' }));
+  t.mock.method(nodemailer, 'createTransport', () => ({ sendMail: () => new Promise(() => {}) }));
+  const pending = invoke(resendVerification, { email: 'jane@example.com' });
+  await Promise.resolve();
+  t.mock.timers.tick(10000);
+  const res = await pending;
+  assert.equal(res.statusCode, 503);
+  assert.match(res.body.error, /could not be confirmed/);
 });
 
 test('model permits legacy users and validates new fields when present', async () => {

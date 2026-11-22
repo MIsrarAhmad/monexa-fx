@@ -6,10 +6,12 @@ import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
-import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_GRACE_PERIOD_HOURS, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { getMinimumDepositForBalance } from '../utils/depositRules.js';
+import { isValidCountryCode } from '../utils/countries.js';
 import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
+import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -130,89 +132,53 @@ const deleteCloudinaryAssets = async (assetUrls) => {
 // @access  Private/Admin
 export const getAdminStats = async (req, res, next) => {
   try {
-    const users = await User.find({ role: 'user' }).select('_id name email');
-    const totalUsers = users.length;
-    const wallets = await Wallet.find({});
-    const walletsByUserId = new Map(
-      wallets.filter((wallet) => wallet.user).map((wallet) => [wallet.user.toString(), wallet])
-    );
-
-    const totalLiquidity = wallets.reduce((acc, w) => acc + (w.mainBalance || 0), 0);
-    const totalProfitBalances = wallets.reduce((acc, w) => acc + (w.profitBalance || 0), 0);
-    const totalReferralBalances = wallets.reduce((acc, w) => acc + (w.referralBalance || 0), 0);
-    const totalWithdrawableBalance = totalLiquidity + totalProfitBalances + totalReferralBalances;
-
-    const completedWithdrawals = await Transaction.find({
-      type: 'WITHDRAWAL_REQUEST',
-      status: 'COMPLETED',
-    });
-    const totalPlatformFeesCollected = completedWithdrawals.reduce(
-      (acc, t) => acc + (t.feeDeducted || 0),
-      0
-    );
-
-    let fullyInvestedCount = 0;
-    let partiallyInvestedCount = 0;
-    let zeroInvestedCount = 0;
-
-    const userInvestmentDetails = [];
-
-    for (const user of users) {
-      const wallet = walletsByUserId.get(user._id.toString());
-      const mainBal = wallet?.mainBalance || 0;
-      let status = 'UNINVESTED';
-      let remainingToMinThreshold = MINIMUM_INITIAL_DEPOSIT;
-
-      if (mainBal >= MINIMUM_INITIAL_DEPOSIT) {
-        status = 'ACTIVE_QUALIFIED';
-        remainingToMinThreshold = 0;
-        fullyInvestedCount++;
-      } else if (mainBal > 0) {
-        status = 'BELOW_THRESHOLD';
-        remainingToMinThreshold = MINIMUM_INITIAL_DEPOSIT - mainBal;
-        partiallyInvestedCount++;
-      } else {
-        zeroInvestedCount++;
-      }
-
-      userInvestmentDetails.push({
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-        mainBalance: mainBal,
-        totalWithdrawable: mainBal + (wallet?.profitBalance || 0) + (wallet?.referralBalance || 0),
-        status,
-        remainingToMinThreshold,
-      });
-    }
-
-    const pendingWithdrawalsCount = await Transaction.countDocuments({
-      type: 'WITHDRAWAL_REQUEST',
-      status: 'PENDING',
-    });
-
-    const pendingDepositsCount = await Transaction.countDocuments({
-      type: 'DEPOSIT',
-      status: 'PENDING',
-    });
+    const [userGroups, walletGroups, feeGroups, pendingWithdrawalsCount, pendingDepositsCount] = await Promise.all([
+      User.aggregate([
+        { $match: { role: 'user' } },
+        { $lookup: { from: Wallet.collection.name, localField: '_id', foreignField: 'user', as: 'wallet' } },
+        { $set: { main: { $ifNull: [{ $arrayElemAt: ['$wallet.mainBalance', 0] }, 0] } } },
+        { $group: {
+          _id: null,
+          totalUsers: { $sum: 1 },
+          fullyInvestedCount: { $sum: { $cond: [{ $gte: ['$main', MINIMUM_INITIAL_DEPOSIT] }, 1, 0] } },
+          partiallyInvestedCount: { $sum: { $cond: [{ $and: [{ $gt: ['$main', 0] }, { $lt: ['$main', MINIMUM_INITIAL_DEPOSIT] }] }, 1, 0] } },
+          zeroInvestedCount: { $sum: { $cond: [{ $lte: ['$main', 0] }, 1, 0] } },
+        } },
+      ]),
+      Wallet.aggregate([{ $group: {
+        _id: null,
+        totalLiquidity: { $sum: { $ifNull: ['$mainBalance', 0] } },
+        totalProfitBalances: { $sum: { $ifNull: ['$profitBalance', 0] } },
+        totalReferralBalances: { $sum: { $ifNull: ['$referralBalance', 0] } },
+      } }]),
+      Transaction.aggregate([
+        { $match: { type: 'WITHDRAWAL_REQUEST', status: 'COMPLETED' } },
+        { $group: { _id: null, total: { $sum: '$feeDeducted' } } },
+      ]),
+      Transaction.countDocuments({ type: 'WITHDRAWAL_REQUEST', status: 'PENDING' }),
+      Transaction.countDocuments({ type: 'DEPOSIT', status: 'PENDING' }),
+    ]);
+    const users = userGroups[0] || {};
+    const wallets = walletGroups[0] || {};
+    const totalLiquidity = wallets.totalLiquidity || 0;
+    const totalWithdrawableBalance = totalLiquidity + (wallets.totalProfitBalances || 0) + (wallets.totalReferralBalances || 0);
 
     res.status(200).json({
       success: true,
       data: {
         metrics: {
-          totalUsers,
+          totalUsers: users.totalUsers || 0,
           totalLiquidity,
           totalWithdrawableBalance,
-          totalPlatformFeesCollected,
+          totalPlatformFeesCollected: feeGroups[0]?.total || 0,
           pendingWithdrawalsCount,
           pendingDepositsCount,
           segmentation: {
-            fullyInvestedCount,
-            partiallyInvestedCount,
-            zeroInvestedCount,
+            fullyInvestedCount: users.fullyInvestedCount || 0,
+            partiallyInvestedCount: users.partiallyInvestedCount || 0,
+            zeroInvestedCount: users.zeroInvestedCount || 0,
           },
         },
-        userInvestmentDetails,
       },
     });
   } catch (error) {
@@ -231,7 +197,7 @@ const getUserFinancialTotals = async (userIds) => {
           { type: 'DEPOSIT', status: 'COMPLETED' },
           { type: 'DAILY_YIELD' },
           { type: { $in: ['REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE'] } },
-          { type: 'WITHDRAWAL_REQUEST', status: 'COMPLETED' },
+          { type: 'WITHDRAWAL_REQUEST', status: { $in: ['PENDING', 'COMPLETED'] } },
         ],
       },
     },
@@ -301,11 +267,133 @@ const getUserFinancialTotals = async (userIds) => {
             ],
           },
         },
+        priorWithdrawalCount: {
+          $sum: { $cond: [
+            { $and: [
+              { $eq: ['$type', 'WITHDRAWAL_REQUEST'] },
+              { $in: ['$status', ['PENDING', 'COMPLETED']] },
+            ] },
+            1,
+            0,
+          ] },
+        },
       },
     },
   ]);
 
   return new Map(totals.map((entry) => [entry._id.toString(), entry]));
+};
+
+// @route GET /api/admin/user-overview
+// @access Private/Admin
+export const getAdminUserOverview = async (req, res, next) => {
+  try {
+    const rawPage = typeof req.query.page === 'string' ? req.query.page : '';
+    const page = /^\d{1,6}$/.test(rawPage) ? Math.max(1, Number(rawPage)) : 1;
+    const pageSize = 25;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const statuses = ['ACTIVE_QUALIFIED', 'BELOW_THRESHOLD', 'UNINVESTED'];
+    const status = statuses.includes(req.query.status) ? req.query.status : null;
+    const match = { role: 'user' };
+    if (search) {
+      match.$or = [
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } },
+      ];
+    }
+
+    const pipeline = [
+      { $match: match },
+      { $lookup: { from: Wallet.collection.name, localField: '_id', foreignField: 'user', as: 'wallet' } },
+      { $set: { wallet: { $arrayElemAt: ['$wallet', 0] } } },
+      { $set: {
+        mainBalance: { $ifNull: ['$wallet.mainBalance', 0] },
+        profitBalance: { $ifNull: ['$wallet.profitBalance', 0] },
+        referralBalance: { $ifNull: ['$wallet.referralBalance', 0] },
+        unwithdrawnProfitCounter: { $ifNull: ['$wallet.unwithdrawnProfitCounter', 0] },
+        hasWallet: { $ne: [{ $ifNull: ['$wallet._id', null] }, null] },
+      } },
+      { $set: { status: { $switch: {
+        branches: [
+          { case: { $gte: ['$mainBalance', MINIMUM_INITIAL_DEPOSIT] }, then: 'ACTIVE_QUALIFIED' },
+          { case: { $gt: ['$mainBalance', 0] }, then: 'BELOW_THRESHOLD' },
+        ],
+        default: 'UNINVESTED',
+      } } } },
+      ...(status ? [{ $match: { status } }] : []),
+      { $sort: { name: 1, _id: 1 } },
+      { $facet: {
+        count: [{ $count: 'total' }],
+        users: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          { $project: { _id: 1, name: 1, email: 1, country: 1, emailVerified: 1, mainBalance: 1, profitBalance: 1, referralBalance: 1, status: 1, kycStatus: 1, firstDepositAt: 1, hasUsedGracePeriod: 1, unwithdrawnProfitCounter: 1, hasWallet: 1 } },
+        ],
+      } },
+    ];
+    const [result] = await User.aggregate(pipeline);
+    const users = result.users;
+    const totalsByUser = await getUserFinancialTotals(users.map((user) => user._id));
+    const total = result.count[0]?.total || 0;
+    const now = Date.now();
+    res.status(200).json({
+      success: true,
+      data: {
+        users: users.map((user) => {
+          const totals = totalsByUser.get(user._id.toString()) || {};
+          const walletTotal = user.mainBalance + user.profitBalance + user.referralBalance;
+          const inGracePeriod = Boolean(
+            user.firstDepositAt && !user.hasUsedGracePeriod && !totals.priorWithdrawalCount
+            && (now - new Date(user.firstDepositAt).getTime()) / (60 * 60 * 1000) < WITHDRAWAL_GRACE_PERIOD_HOURS
+          );
+          let withdrawalEligibility = 'ELIGIBLE';
+          if (user.emailVerified === false) withdrawalEligibility = 'EMAIL_VERIFICATION_REQUIRED';
+          else if (user.kycStatus !== 'APPROVED') withdrawalEligibility = 'KYC_REQUIRED';
+          else if (!user.hasWallet) withdrawalEligibility = 'WALLET_MISSING';
+          else if (!inGracePeriod && !(user.unwithdrawnProfitCounter >= WITHDRAWAL_LOCK_PROFIT_TARGET)) withdrawalEligibility = 'PROFIT_LOCKED';
+          return {
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            country: isValidCountryCode(user.country) ? user.country : null,
+            totalDeposited: totals.totalDeposited || 0,
+            totalReferralEarned: totals.totalReferralEarned || 0,
+            mainBalance: user.mainBalance,
+            walletTotal,
+            requestableGross: withdrawalEligibility === 'ELIGIBLE' ? Math.max(0, walletTotal) : 0,
+            withdrawalEligibility,
+            status: user.status,
+            remainingToMinThreshold: Math.max(0, Number((MINIMUM_INITIAL_DEPOSIT - user.mainBalance).toFixed(2))),
+          };
+        }),
+        pagination: { page, pageSize, total, pages: Math.ceil(total / pageSize) },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @route GET /api/admin/country-counts
+// @access Private/Admin
+export const getAdminCountryCounts = async (req, res, next) => {
+  try {
+    const groups = await User.aggregate([
+      { $match: { role: 'user' } },
+      { $group: { _id: '$country', count: { $sum: 1 } } },
+    ]);
+    const counts = new Map();
+    for (const group of groups) {
+      const country = isValidCountryCode(group._id) ? group._id : null;
+      counts.set(country, (counts.get(country) || 0) + group.count);
+    }
+    const countries = [...counts].map(([country, count]) => ({ country, count }))
+      .sort((a, b) => b.count - a.count || (a.country || '').localeCompare(b.country || ''));
+    res.status(200).json({ success: true, data: { countries } });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // @route GET /api/admin/financial-ledger/users
@@ -616,6 +704,7 @@ export const processDepositAction = async (req, res, next) => {
     if (action === 'REJECT') {
       transaction.status = 'REJECTED';
       await transaction.save();
+      void sendResolutionTransactionEmail(transaction, 'rejected');
       await notifyUser({
         userId: transaction.user,
         type: 'DEPOSIT_REJECTED',
@@ -664,6 +753,7 @@ export const processDepositAction = async (req, res, next) => {
 
     transaction.status = 'COMPLETED';
     await transaction.save();
+    void sendResolutionTransactionEmail(transaction, 'completed', user);
     await notifyUser({
       userId: transaction.user,
       type: 'DEPOSIT_APPROVED',
@@ -764,6 +854,7 @@ export const processWithdrawalAction = async (req, res, next) => {
 
       transaction.status = 'REJECTED';
       await transaction.save();
+      void sendResolutionTransactionEmail(transaction, 'rejected');
       await notifyUser({
         userId: transaction.user,
         type: 'WITHDRAWAL_REJECTED',
@@ -794,11 +885,12 @@ export const processWithdrawalAction = async (req, res, next) => {
       transaction.txHash = payoutTxHash;
     }
     await transaction.save();
+    void sendResolutionTransactionEmail(transaction, 'completed', user);
     await notifyUser({
       userId: transaction.user,
       type: 'WITHDRAWAL_APPROVED',
-      title: 'Withdrawal request completed',
-      message: `$${transaction.netAmount.toFixed(2)} USDT has been marked as paid to your TRC20 wallet.`,
+      title: 'Withdrawal request marked completed',
+      message: `Your withdrawal request for $${transaction.netAmount.toFixed(2)} USDT net has been marked completed by an administrator.`,
       url: '/transactions',
     });
 

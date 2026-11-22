@@ -17,6 +17,9 @@ export const protect = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({ success: false, error: 'User not found' });
       }
+      if (req.user.emailVerified === false) {
+        return res.status(403).json({ success: false, error: 'Please verify your email address before signing in.' });
+      }
       if (req.user.passwordChangedAt && decoded.iat * 1000 < req.user.passwordChangedAt.getTime()) {
         return res.status(401).json({ success: false, error: 'Password changed. Please sign in again.' });
       }

@@ -7,10 +7,43 @@ import Referral from '../models/Referral.js';
 import generateToken from '../utils/generateTokens.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { sendEmail } from '../services/emailService.js';
-import { passwordResetEmailTemplate, welcomeEmailTemplate } from '../utils/emailTemplates.js';
+import { passwordResetEmailTemplate, verificationEmailTemplate } from '../utils/emailTemplates.js';
 import { isValidPassword, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy.js';
 import { isValidCountryCode } from '../utils/countries.js';
 import { isValidDateOfBirth } from '../utils/dateOfBirth.js';
+
+const createVerificationToken = () => {
+  const token = crypto.randomBytes(32).toString('hex');
+  return {
+    token,
+    hash: crypto.createHash('sha256').update(token).digest('hex'),
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  };
+};
+
+const sendVerificationEmail = async (user, token) => {
+  const verificationUrl = new URL('/verify-email', process.env.FRONTEND_URL || 'https://monexafx.com');
+  verificationUrl.searchParams.set('token', token);
+  const delivery = sendEmail({
+    to: user.email,
+    subject: 'Verify your MonexaFX email address',
+    html: verificationEmailTemplate(user.name, verificationUrl.toString()),
+  });
+  let timeout;
+  try {
+    return await Promise.race([
+      delivery,
+      new Promise((resolve) => {
+        timeout = setTimeout(() => {
+          console.error('Verification email delivery did not finish within 10 seconds.');
+          resolve(false);
+        }, 10000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -99,6 +132,7 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
+    const verification = createVerificationToken();
     const user = await User.create({
       name: name.trim(),
       fatherName: fatherName.trim(),
@@ -106,12 +140,15 @@ export const registerUser = async (req, res, next) => {
       dateOfBirth,
       country,
       email: normalizedEmail,
+      emailVerified: false,
+      emailVerificationToken: verification.hash,
+      emailVerificationExpires: verification.expires,
       password: hashedPassword,
       referralCode: newRefCode,
       referredBy: referrerUser ? referrerUser._id : null,
     });
 
-    const wallet = await Wallet.create({
+    await Wallet.create({
       user: user._id,
       mainBalance: 0,
       profitBalance: 0,
@@ -128,37 +165,13 @@ export const registerUser = async (req, res, next) => {
       });
     }
 
-    const token = generateToken(user._id);
-
-    // Send Welcome Email asynchronously
-    sendEmail({
-      to: user.email,
-      subject: 'Welcome to MonexaFX - Account Active',
-      html: welcomeEmailTemplate(user.name, user.referralCode),
-    }).catch((err) => console.error('Background welcome email error:', err.message));
-
+    const emailSent = await sendVerificationEmail(user, verification.token);
     res.status(201).json({
       success: true,
-      message: 'Registration successful',
-      data: {
-        user: {
-          _id: user._id,
-          name: user.name,
-          country: user.country || null,
-          email: user.email,
-          role: user.role,
-          referralCode: user.referralCode,
-          hasUsedGracePeriod: user.hasUsedGracePeriod,
-          firstDepositAt: user.firstDepositAt || null,
-        },
-        wallet: {
-          mainBalance: wallet.mainBalance,
-          profitBalance: wallet.profitBalance,
-          unwithdrawnProfitCounter: wallet.unwithdrawnProfitCounter,
-          referralBalance: wallet.referralBalance,
-        },
-        token,
-      },
+      message: emailSent
+        ? 'Registration successful. Please verify your email before signing in.'
+        : 'Account created, but verification email delivery could not be confirmed. Please request another email if it does not arrive.',
+      data: { email: user.email, verificationRequired: true, verificationEmailSent: emailSent },
     });
   } catch (error) {
     next(error);
@@ -195,6 +208,14 @@ export const loginUser = async (req, res, next) => {
       });
     }
 
+    if (user.emailVerified === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'Please verify your email address before signing in.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+
     const wallet = await Wallet.findOne({ user: user._id });
     const token = generateToken(user._id);
 
@@ -220,6 +241,55 @@ export const loginUser = async (req, res, next) => {
         },
         token,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify a new account's email using a single-use token
+// @route   POST /api/auth/verify-email
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const token = req.body.token;
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(400).json({ success: false, error: 'This verification link is invalid or has expired. Please request a new one.' });
+    }
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOneAndUpdate(
+      { emailVerified: false, emailVerificationToken: hash, emailVerificationExpires: { $gt: new Date() } },
+      { $set: { emailVerified: true }, $unset: { emailVerificationToken: 1, emailVerificationExpires: 1 } },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(400).json({ success: false, error: 'This verification link is invalid or has expired. Please request a new one.' });
+    }
+    return res.status(200).json({ success: true, message: 'Email verified successfully. You can now sign in.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Resend a verification email for a new account
+// @route   POST /api/auth/resend-verification
+export const resendVerification = async (req, res, next) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid email address.' });
+    }
+    const verification = createVerificationToken();
+    const user = await User.findOneAndUpdate(
+      { email, emailVerified: false },
+      { $set: { emailVerificationToken: verification.hash, emailVerificationExpires: verification.expires } },
+      { new: true }
+    );
+    if (user && !(await sendVerificationEmail(user, verification.token))) {
+      return res.status(503).json({ success: false, error: 'Verification email delivery could not be confirmed. Please try again later if it does not arrive.' });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'If this address belongs to an unverified account, a verification email has been sent.',
     });
   } catch (error) {
     next(error);

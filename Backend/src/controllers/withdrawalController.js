@@ -9,6 +9,7 @@ import {
   WITHDRAWAL_FEE_PERCENTAGE,
 } from '../config/constants.js';
 import { notifyUser } from '../services/notificationService.js';
+import { sendTransactionEmail } from '../utils/transactionEmail.js';
 
 // @desc    Submit Cashout/Withdrawal Request (Sends to Admin Pending Queue)
 // @route   POST /api/withdrawals/request
@@ -142,6 +143,7 @@ export const requestWithdrawal = async (req, res, next) => {
       status: 'PENDING',
       description: `USDT TRC20 withdrawal request (Net Payout: $${netAmount} USDT)`,
     });
+    void sendTransactionEmail(transaction, 'requested', user);
     await notifyUser({
       userId: req.user._id,
       type: 'WITHDRAWAL_PENDING',

@@ -76,6 +76,17 @@ export const passwordResetEmailTemplate = (name, resetUrl) => {
   return baseLayout(content, 'Use the secure link to reset your Monexa FX password.');
 };
 
+export const verificationEmailTemplate = (name, verificationUrl) => {
+  const content = `
+    <h1 style="${headingStyle}">Verify your email address</h1>
+    <p style="${paragraphStyle}">Hello ${escapeHtml(name)},</p>
+    <p style="${paragraphStyle}">Thank you for registering with Monexa FX. Confirm your email address to activate sign-in. This link expires in 24 hours and can be used once.</p>
+    <p style="margin:20px 0;"><a href="${escapeHtml(verificationUrl)}" style="display:inline-block;padding:12px 22px;background-color:#087e9d;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;font-weight:700;text-decoration:none;border-radius:6px;">Verify email address</a></p>
+    <p style="${paragraphStyle}">If you did not create an account, you can ignore this message.</p>
+  `;
+  return baseLayout(content, 'Confirm your email address to sign in to Monexa FX.');
+};
+
 export const depositApprovedTemplate = (name, amount) => {
   const content = `
     <h1 style="${headingStyle}">Deposit confirmed</h1>

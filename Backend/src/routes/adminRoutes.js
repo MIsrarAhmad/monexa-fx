@@ -3,6 +3,8 @@ import express from 'express';
 import { protect, adminOnly } from '../middleware/authMiddleware.js';
 import {
   getAdminStats,
+  getAdminUserOverview,
+  getAdminCountryCounts,
   getPendingWithdrawals,
   processWithdrawalAction,
   getPendingDeposits,
@@ -25,6 +27,8 @@ router.get('/maintenance', getMaintenanceStatus);
 // Protected Admin routes
 router.use(protect, adminOnly);
 router.get('/stats', getAdminStats);
+router.get('/user-overview', getAdminUserOverview);
+router.get('/country-counts', getAdminCountryCounts);
 router.get('/referral-code', getAdminReferralCode);
 router.get('/financial-ledger/users', getAdminFinancialLedgerUsers);
 router.get('/financial-ledger/users/:userId', getAdminUserFinancialLedger);

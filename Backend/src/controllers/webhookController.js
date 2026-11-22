@@ -3,8 +3,7 @@ import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { generateBinanceSignature } from '../config/binance.js';
-import { sendEmail } from '../services/emailService.js';
-import { depositApprovedTemplate } from '../utils/emailTemplates.js';
+import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
 import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 import { notifyUser } from '../services/notificationService.js';
 
@@ -69,12 +68,7 @@ export const handleBinanceWebhook = async (req, res) => {
       }
       await wallet.save();
 
-      // Send confirmation email
-      sendEmail({
-        to: user.email,
-        subject: 'Deposit Confirmed - TradeYield',
-        html: depositApprovedTemplate(user.name, depositAmount),
-      }).catch((err) => console.error('Deposit webhook email error:', err.message));
+      void sendResolutionTransactionEmail(transaction, 'completed', user);
       await notifyUser({
         userId: transaction.user,
         type: 'DEPOSIT_APPROVED',
