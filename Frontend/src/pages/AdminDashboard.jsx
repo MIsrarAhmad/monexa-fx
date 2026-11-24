@@ -36,13 +36,11 @@ import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import StatCard from '../components/common/StatCard';
 import Toast from '../components/common/Toast';
+import UserFinancialReport from '../components/dashboard/UserFinancialReport';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
 const formatDate = (date) => date ? new Date(date).toLocaleDateString() : 'Unavailable';
-const formatMonth = (month) => new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', {
-  month: 'short', year: 'numeric', timeZone: 'UTC',
-});
 const formatCounts = (counts) => counts
   ? `${counts.completed} completed · ${counts.pending} pending · ${counts.rejected} rejected${counts.approved ? ` · ${counts.approved} approved` : ''}`
   : 'Counts unavailable';
@@ -545,10 +543,10 @@ const AdminDashboard = () => {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Wallet className="w-5 h-5 text-emerald-400" /> User Financial Ledger
+                      <Wallet className="w-5 h-5 text-emerald-400" /> User Financial Report
                     </h2>
                     <p className="mt-1 text-xs text-slate-400">
-                      Completed deposits, credited profit, referral income, paid withdrawals, and current balances.
+                      Search by name or email, then select a user to see past activity, current balances and future estimates.
                     </p>
                   </div>
                   <div className="relative w-full sm:w-72">
@@ -572,67 +570,26 @@ const AdminDashboard = () => {
                 ) : filteredLedgerUsers.length === 0 ? (
                   <div className="py-10 text-center text-slate-500">No users match this search.</div>
                 ) : (
-                  <div className="mt-5 overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400">
-                          <th className="px-3 py-3">User</th>
-                          <th className="px-3 py-3">Deposited</th>
-                          <th className="px-3 py-3">Profit</th>
-                          <th className="px-3 py-3">Referral earned</th>
-                          <th className="px-3 py-3">Withdrawn</th>
-                          <th className="px-3 py-3">Current balance</th>
-                          <th className="px-3 py-3">Details</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60">
-                        {filteredLedgerUsers.map((ledgerUser) => (
-                          <tr
-                            key={ledgerUser.userId}
-                            className={selectedLedgerUserId === ledgerUser.userId ? 'bg-slate-900/70' : 'hover:bg-slate-900/40'}
-                          >
-                            <td className="px-3 py-3">
-                              <div className="font-semibold text-white">{ledgerUser.name}</div>
-                              <div className="text-slate-400">{ledgerUser.email}</div>
-                              <div className="mt-1 text-[10px] text-slate-500">Joined {formatDate(ledgerUser.joinedAt)}</div>
-                            </td>
-                            <td className="px-3 py-3 text-cyan-300">
-                              {formatUsdt(ledgerUser.totalDeposited)}
-                              <div className="mt-1 text-[10px] text-slate-500">{formatCounts(ledgerUser.depositCounts)}</div>
-                            </td>
-                            <td className="px-3 py-3 text-emerald-300">{formatUsdt(ledgerUser.totalProfit)}</td>
-                            <td className="px-3 py-3 text-amber-300">{formatUsdt(ledgerUser.totalReferralEarned)}</td>
-                            <td className="px-3 py-3 text-rose-300">
-                              {formatUsdt(ledgerUser.totalWithdrawn)}
-                              <div className="text-[10px] text-slate-500">Net paid {formatUsdt(ledgerUser.totalPaidOut)}</div>
-                              <div className="mt-1 text-[10px] text-slate-500">{formatCounts(ledgerUser.withdrawalCounts)}</div>
-                            </td>
-                            <td className="px-3 py-3 text-white">
-                              {formatUsdt(
-                                ledgerUser.balances.investment
-                                + ledgerUser.balances.profit
-                                + ledgerUser.balances.referral
-                              )}
-                            </td>
-                            <td className="px-3 py-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedLedgerUserId(ledgerUser.userId);
-                                  setLedgerPage(1);
-                                  setLedgerType('');
-                                  setClockNow(Date.now());
-                                }}
-                                className="rounded-lg border border-cyan-800 px-3 py-1.5 font-semibold text-cyan-300 hover:bg-cyan-950/60"
-                              >
-                                View ledger
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ul className="mt-5 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredLedgerUsers.map((ledgerUser) => (
+                      <li key={ledgerUser.userId}>
+                        <button
+                          type="button"
+                          aria-pressed={selectedLedgerUserId === ledgerUser.userId}
+                          onClick={() => {
+                            setSelectedLedgerUserId(ledgerUser.userId);
+                            setLedgerPage(1);
+                            setLedgerType('');
+                            setClockNow(Date.now());
+                          }}
+                          className={`w-full rounded-xl border p-3 text-left transition ${selectedLedgerUserId === ledgerUser.userId ? 'border-cyan-500 bg-cyan-950/40' : 'border-slate-700 bg-slate-950/50 hover:border-cyan-800'}`}
+                        >
+                          <span className="block truncate text-sm font-semibold text-white">{ledgerUser.name}</span>
+                          <span className="mt-1 block truncate text-xs text-slate-400">{ledgerUser.email}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </section>
 
@@ -652,38 +609,7 @@ const AdminDashboard = () => {
                         </h3>
                         <p className="text-xs text-slate-400">{selectedLedger.user.email} · Joined {formatDate(selectedLedger.user.createdAt)}</p>
                       </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="rounded-xl border border-cyan-900/50 bg-slate-900/60 p-4">
-                          <p className="text-xs text-slate-400">Total completed deposits</p>
-                          <p className="mt-1 font-bold text-cyan-300">{formatUsdt(selectedLedger.summary.totalDeposited)}</p>
-                          <p className="mt-1 text-[10px] text-slate-500">{formatCounts(selectedLedger.summary.depositCounts)}</p>
-                        </div>
-                        <div className="rounded-xl border border-emerald-900/50 bg-slate-900/60 p-4">
-                          <p className="text-xs text-slate-400">Profit credited</p>
-                          <p className="mt-1 font-bold text-emerald-300">{formatUsdt(selectedLedger.summary.totalProfit)}</p>
-                        </div>
-                        <div className="rounded-xl border border-amber-900/50 bg-slate-900/60 p-4">
-                          <p className="text-xs text-slate-400">Referral income earned</p>
-                          <p className="mt-1 font-bold text-amber-300">{formatUsdt(selectedLedger.summary.totalReferralEarned)}</p>
-                        </div>
-                        <div className="rounded-xl border border-rose-900/50 bg-slate-900/60 p-4">
-                          <p className="text-xs text-slate-400">Withdrawn / net paid</p>
-                          <p className="mt-1 font-bold text-rose-300">{formatUsdt(selectedLedger.summary.totalWithdrawn)}</p>
-                          <p className="mt-1 text-[10px] text-slate-500">
-                            Net paid {formatUsdt(selectedLedger.summary.totalPaidOut)} · Fees {formatUsdt(selectedLedger.summary.totalWithdrawalFees)}
-                          </p>
-                          <p className="mt-1 text-[10px] text-slate-500">{formatCounts(selectedLedger.summary.withdrawalCounts)}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                        <h4 className="text-xs font-bold text-white">Remaining available balance</h4>
-                        <div className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
-                          <p className="text-slate-400">Investment: <span className="font-semibold text-cyan-300">{formatUsdt(selectedLedger.summary.balances.investment)}</span></p>
-                          <p className="text-slate-400">Profit: <span className="font-semibold text-emerald-300">{formatUsdt(selectedLedger.summary.balances.profit)}</span></p>
-                          <p className="text-slate-400">Referral: <span className="font-semibold text-amber-300">{formatUsdt(selectedLedger.summary.balances.referral)}</span></p>
-                        </div>
-                      </div>
+                      <UserFinancialReport report={selectedLedger} />
 
                       <div className="mt-4 rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-4">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -727,6 +653,9 @@ const AdminDashboard = () => {
                               <option value="">All transactions</option>
                               <option value="DEPOSIT">Deposits</option>
                               <option value="WITHDRAWAL_REQUEST">Withdrawal requests</option>
+                              <option value="DAILY_YIELD">Investment profit</option>
+                              <option value="REFERRAL_DIRECT_BONUS">Direct referral bonuses</option>
+                              <option value="REFERRAL_DAILY_PASSIVE">Daily referral rewards</option>
                             </select>
                           </label>
                         </div>
@@ -757,7 +686,7 @@ const AdminDashboard = () => {
                                         <div className="mt-1 text-[10px] font-normal text-amber-300">Submitted {formatUsdt(transaction.originalSubmittedAmount)} · corrected</div>
                                       )}
                                     </td>
-                                    <td className="px-3 py-3 text-slate-300">{transaction.status}</td>
+                                    <td className="px-3 py-3 text-slate-300">{['DAILY_YIELD', 'REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE'].includes(transaction.type) ? 'RECORDED CREDIT' : transaction.status}</td>
                                     <td className="max-w-sm px-3 py-3 text-slate-400">
                                       {transaction.description || transaction.paymentMethod || '—'}
                                       {transaction.depositCorrectionReason && <div className="mt-1 text-amber-300">Correction: {transaction.depositCorrectionReason}</div>}
@@ -1317,19 +1246,15 @@ const AdminDashboard = () => {
               <p className="mb-4 text-xs leading-relaxed text-slate-400">
                 Amounts are completed totals; counts distinguish completed, pending and rejected requests. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
               </p>
-              <p className="mb-4 text-xs leading-relaxed text-slate-400">
-                Monthly profit uses UTC calendar months. Forecasts apply $1 per complete $100 of main balance plus retained profit, adding each projected credit to retained profit. They assume no deposits, withdrawals or schedule changes, exclude referrals and withdrawal fees, may differ if processing is delayed, and are not confirmed payments.
-              </p>
               <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
               <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
-                <table className="w-full min-w-[1660px] text-left border-collapse text-xs">
+                <table className="w-full min-w-[1440px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
                       <th className="py-3 px-3">Name & Email</th>
                       <th className="py-3 px-3">Country</th>
                       <th className="py-3 px-3">Completed deposits</th>
                       <th className="py-3 px-3">Completed withdrawals</th>
-                      <th className="py-3 px-3">Monthly profit</th>
                       <th className="py-3 px-3">Current principal</th>
                       <th className="py-3 px-3">Wallet balance</th>
                       <th className="py-3 px-3">Requestable gross</th>
@@ -1342,15 +1267,15 @@ const AdminDashboard = () => {
                   <tbody className="divide-y divide-slate-800/60">
                     {loadingUserOverview ? (
                       <tr>
-                        <td colSpan={12} className="py-4 text-center text-slate-500">
+                        <td colSpan={11} className="py-4 text-center text-slate-500">
                           Loading user directory...
                         </td>
                       </tr>
                     ) : userOverviewError ? (
-                      <tr><td colSpan={12} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
+                      <tr><td colSpan={11} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
                     ) : overviewUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="py-4 text-center text-slate-500">
+                        <td colSpan={11} className="py-4 text-center text-slate-500">
                           No users matched your search or filter criteria.
                         </td>
                       </tr>
@@ -1365,27 +1290,6 @@ const AdminDashboard = () => {
                           <td className="py-3 px-3 text-slate-300">{countryName(u.country)}</td>
                           <td className="py-3 px-3 text-cyan-300">{formatUsdt(u.totalDeposited)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.depositCounts)}</div></td>
                           <td className="py-3 px-3 text-rose-300">{formatUsdt(u.totalWithdrawn)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.withdrawalCounts)}</div></td>
-                          <td className="min-w-[220px] py-3 px-3 align-top">
-                            {u.monthlyProfit ? (
-                              <div className="space-y-1">
-                                <div className="text-slate-300">{formatMonth(u.monthlyProfit.current.month)} credited: <span className="font-semibold text-emerald-300">{formatUsdt(u.monthlyProfit.current.credited)}</span></div>
-                                <div className="text-slate-400">Month end estimate: {u.monthlyProfit.current.estimatedTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.current.estimatedTotal)}</div>
-                                <div className="text-cyan-300">Next 3 months estimate: {u.monthlyProfit.nextThreeTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.nextThreeTotal)}</div>
-                                {u.monthlyProfit.status === 'WALLET_MISSING' && <div className="text-amber-300">Wallet unavailable</div>}
-                                {u.monthlyProfit.status === 'BALANCE_UNAVAILABLE' && <div className="text-amber-300">Balance unavailable</div>}
-                                {u.monthlyProfit.status === 'SCHEDULE_UNAVAILABLE' && <div className="text-amber-300">Profit schedule unavailable or paused</div>}
-                                <details className="text-slate-400">
-                                  <summary className="cursor-pointer text-cyan-400">Monthly breakdown</summary>
-                                  {u.monthlyProfit.nextMonths.map((month) => (
-                                    <div key={month.month} className="mt-1 flex justify-between gap-3">
-                                      <span>{formatMonth(month.month)}</span>
-                                      <span>{month.estimated === null ? 'Unavailable' : formatUsdt(month.estimated)}</span>
-                                    </div>
-                                  ))}
-                                </details>
-                              </div>
-                            ) : <span className="text-amber-300">Monthly report unavailable</span>}
-                          </td>
                           <td className="py-3 px-3 font-bold text-cyan-400">{formatUsdt(u.mainBalance)}</td>
                           <td className="py-3 px-3 font-bold text-slate-200">{formatUsdt(u.walletTotal)}</td>
                           <td className="py-3 px-3 font-bold text-emerald-400">
