@@ -40,4 +40,9 @@ test('preflight is admin-only and performs read-only compatibility checks', asyn
   assert.equal(readCount, 1);
   assert.equal(aggregate.mock.callCount(), 1);
   assert.equal(ended, true);
+  aggregate.mock.mockImplementation(async () => { const error = new Error('test'); error.code = 123; throw error; });
+  t.mock.method(console, 'error', () => {});
+  const failed = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(failed.status, 503);
+  assert.deepEqual((await failed.json()).data, { phase: 'queueHistory', code: 123 });
 });
