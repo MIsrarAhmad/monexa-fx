@@ -11,7 +11,7 @@ const GrowthChart = memo(({ chartData, activeFilter, onFilterChange }) => {
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-cyan-400" /> Performance & Growth Trajectory
           </h3>
-          <p className="text-xs text-slate-400">Weekly compound interest and daily ledger logs.</p>
+          <p className="text-xs text-slate-400">Weekly profit growth and daily ledger logs.</p>
         </div>
         <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
           {['7D', '1M', 'ALL'].map((tf) => (

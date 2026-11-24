@@ -198,7 +198,7 @@ const UserDashboard = () => {
               value={`$${profitBalance.toFixed(2)}`}
               unit="USDT"
               icon={TrendingUp}
-              subText="Daily 1% Compounding"
+              subText="$100-Step Daily Yield"
               badgeText="Daily"
               accentColor="emerald"
             />

@@ -102,7 +102,7 @@ const AboutUsPage = () => {
                   <DollarSign className="w-5 h-5 text-cyan-400" /> Investment Program
                 </h3>
                 <p className="text-slate-300 leading-relaxed mb-3">
-                  MONEXA FX offers a Professional Trading Investment Program with a stated daily return of 1% on qualifying main investment balance. Returns are not compounded and are credited in 24-hour cycles after activation.
+                  MONEXA FX offers a Professional Trading Investment Program with a stated daily return of $1 per complete $100 of main balance plus retained profit. Referral balance is excluded. Returns are credited in 24-hour cycles after activation while the main balance remains at least $300.
                 </p>
                 <div className="space-y-2 text-slate-300">
                   <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ const AboutUsPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span><strong>Stated Daily Return:</strong> 1% of qualifying main investment balance (not compounded)</span>
+                    <span><strong>Stated Daily Return:</strong> $1 per complete $100 of main balance plus retained profit; referral balance excluded</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />

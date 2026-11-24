@@ -688,7 +688,7 @@ const AdminDashboard = () => {
                       <div className="mt-4 rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-4">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <h4 className="text-xs font-bold text-white">Daily 1% profit timer</h4>
+                            <h4 className="text-xs font-bold text-white">Daily stepped profit timer</h4>
                             <p className="mt-1 text-[11px] text-slate-400">
                               Timer is based on the approved investment balance and the backend profit schedule.
                             </p>
@@ -1318,7 +1318,7 @@ const AdminDashboard = () => {
                 Amounts are completed totals; counts distinguish completed, pending and rejected requests. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
               </p>
               <p className="mb-4 text-xs leading-relaxed text-slate-400">
-                Monthly profit uses UTC calendar months. Forecasts use the current 1% principal-only rule and assume the principal and schedule stay unchanged. They exclude referrals and withdrawal fees, may differ if processing is delayed, and are not confirmed payments.
+                Monthly profit uses UTC calendar months. Forecasts apply $1 per complete $100 of main balance plus retained profit, adding each projected credit to retained profit. They assume no deposits, withdrawals or schedule changes, exclude referrals and withdrawal fees, may differ if processing is delayed, and are not confirmed payments.
               </p>
               <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
               <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
@@ -1372,7 +1372,7 @@ const AdminDashboard = () => {
                                 <div className="text-slate-400">Month end estimate: {u.monthlyProfit.current.estimatedTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.current.estimatedTotal)}</div>
                                 <div className="text-cyan-300">Next 3 months estimate: {u.monthlyProfit.nextThreeTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.nextThreeTotal)}</div>
                                 {u.monthlyProfit.status === 'WALLET_MISSING' && <div className="text-amber-300">Wallet unavailable</div>}
-                                {u.monthlyProfit.status === 'BALANCE_UNAVAILABLE' && <div className="text-amber-300">Principal unavailable</div>}
+                                {u.monthlyProfit.status === 'BALANCE_UNAVAILABLE' && <div className="text-amber-300">Balance unavailable</div>}
                                 {u.monthlyProfit.status === 'SCHEDULE_UNAVAILABLE' && <div className="text-amber-300">Profit schedule unavailable or paused</div>}
                                 <details className="text-slate-400">
                                   <summary className="cursor-pointer text-cyan-400">Monthly breakdown</summary>

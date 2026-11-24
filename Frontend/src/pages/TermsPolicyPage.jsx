@@ -49,7 +49,7 @@ const TermsPolicyPage = () => {
               </h3>
               <p className="text-slate-300 leading-relaxed mb-4">
                 <strong>Title:</strong> Professional Trading Investment Program<br />
-                MONEXA FX provides an investment platform focused on Forex, Gold (XAUUSD), Currency Pairs, and Cryptocurrencies. Our platform operates with a professional trading team and offers an investment program with a stated daily return of 1% on qualifying investments.
+                MONEXA FX provides an investment platform focused on Forex, Gold (XAUUSD), Currency Pairs, and Cryptocurrencies. Our platform operates with a professional trading team and offers an investment program with a stated stepped daily return on qualifying investments.
               </p>
 
               {/* Investment Rules Matrix Table */}
@@ -68,7 +68,7 @@ const TermsPolicyPage = () => {
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Daily Return</td>
-                      <td className="py-2.5 px-3 text-emerald-400 font-bold">1% of qualifying main investment balance; not compounded</td>
+                      <td className="py-2.5 px-3 text-emerald-400 font-bold">$1 per complete $100 of main balance plus retained profit; referral balance excluded</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-bold text-white">Activation Period</td>
@@ -111,7 +111,7 @@ const TermsPolicyPage = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <span>3. The stated daily return is 1% of the qualifying main investment balance and is not compounded.</span>
+                  <span>3. The stated daily return is $1 per complete $100 of main balance plus retained profit. Referral balance is excluded. Withdrawing profit can reduce the next daily return.</span>
                 </div>
                 <div className="flex items-start gap-2 text-amber-300">
                   <PauseCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -266,7 +266,7 @@ const TermsPolicyPage = () => {
                 All investment amounts, return calculations, referral rewards, deposit records, and withdrawal transactions must be clearly displayed in the user's account.
               </p>
               <p className="text-slate-300 leading-relaxed mb-3">
-                The 1% daily return is a stated financial commitment of the platform. Its payment must be supported by verified funding and a legally authorized operating structure.
+                The stepped daily return is a stated financial commitment of the platform. Its payment must be supported by verified funding and a legally authorized operating structure.
               </p>
               <p className="text-slate-300 leading-relaxed">
                 All investment terms, fees, withdrawal restrictions, and other applicable conditions must be clearly disclosed to users before they deposit funds.
