@@ -1,6 +1,7 @@
 // Backend/src/routes/adminRoutes.js
 import express from 'express';
 import { protect, adminOnly } from '../middleware/authMiddleware.js';
+import { checkDepositDeployment } from '../controllers/deploymentPreflight.js';
 import {
   getAdminStats,
   getAdminUserOverview,
@@ -27,6 +28,7 @@ router.get('/maintenance', getMaintenanceStatus);
 
 // Protected Admin routes
 router.use(protect, adminOnly);
+router.get('/deployment/deposit-preflight', checkDepositDeployment);
 router.get('/stats', getAdminStats);
 router.get('/user-overview', getAdminUserOverview);
 router.get('/country-counts', getAdminCountryCounts);
