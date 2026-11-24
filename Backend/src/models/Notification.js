@@ -19,6 +19,8 @@ const notificationSchema = new mongoose.Schema(
         'WITHDRAWAL_PENDING',
         'WITHDRAWAL_APPROVED',
         'WITHDRAWAL_REJECTED',
+        'YIELD_PAUSED',
+        'WITHDRAWAL_UNLOCKED',
         'ANNOUNCEMENT',
       ],
       required: true,

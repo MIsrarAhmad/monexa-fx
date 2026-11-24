@@ -6,14 +6,56 @@ import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
-import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_GRACE_PERIOD_HOURS, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { getMinimumDepositForBalance } from '../utils/depositRules.js';
 import { isValidCountryCode } from '../utils/countries.js';
 import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
 import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
+import { getWithdrawalEligibility } from '../utils/withdrawalRules.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+// @route POST /api/admin/users/:userId/withdrawal-unlock
+// @access Private/Admin
+export const reviewLegacyWithdrawalUnlock = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { transactionId, reason } = req.body;
+    if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(transactionId)
+      || typeof reason !== 'string' || reason.trim().length < 10 || reason.trim().length > 300) {
+      return res.status(400).json({ success: false, error: 'Provide valid user and transaction IDs and a review reason of 10 to 300 characters.' });
+    }
+
+    const transaction = await Transaction.findOneAndUpdate(
+      {
+        _id: transactionId, user: userId, type: 'WITHDRAWAL_REQUEST',
+        status: 'COMPLETED', amount: { $gte: WITHDRAWAL_LOCK_PROFIT_TARGET },
+        profitUnlockQualified: { $exists: false },
+      },
+      { $set: {
+        profitUnlockQualified: true,
+        profitUnlockReviewedBy: req.user._id,
+        profitUnlockReviewedAt: new Date(),
+        profitUnlockReviewReason: reason.trim(),
+      } },
+      { new: true, runValidators: true, timestamps: false }
+    );
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: 'No matching unreviewed completed withdrawal of at least $50 was found.' });
+    }
+    await notifyUser({
+      userId,
+      type: 'WITHDRAWAL_UNLOCKED',
+      title: 'Withdrawal eligibility updated',
+      message: 'Your previous withdrawal was reviewed. The $50 profit target will no longer be required for future requests. KYC, available balance and the 20% fee still apply.',
+      url: '/dashboard',
+    });
+    return res.status(200).json({ success: true, message: 'Previous withdrawal reviewed and the profit target removed for future requests.' });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getAdminReferralCode = async (req, res, next) => {
   try {
@@ -277,6 +319,17 @@ const getUserFinancialTotals = async (userIds) => {
             0,
           ] },
         },
+        qualifiedWithdrawalCount: {
+          $sum: { $cond: [
+            { $and: [
+              { $eq: ['$type', 'WITHDRAWAL_REQUEST'] },
+              { $eq: ['$status', 'COMPLETED'] },
+              { $eq: ['$profitUnlockQualified', true] },
+            ] },
+            1,
+            0,
+          ] },
+        },
       },
     },
   ]);
@@ -343,15 +396,15 @@ export const getAdminUserOverview = async (req, res, next) => {
         users: users.map((user) => {
           const totals = totalsByUser.get(user._id.toString()) || {};
           const walletTotal = user.mainBalance + user.profitBalance + user.referralBalance;
-          const inGracePeriod = Boolean(
-            user.firstDepositAt && !user.hasUsedGracePeriod && !totals.priorWithdrawalCount
-            && (now - new Date(user.firstDepositAt).getTime()) / (60 * 60 * 1000) < WITHDRAWAL_GRACE_PERIOD_HOURS
-          );
+          const eligibility = getWithdrawalEligibility({
+            user, wallet: user, priorWithdrawalCount: totals.priorWithdrawalCount || 0,
+            permanentlyUnlocked: totals.qualifiedWithdrawalCount > 0, now,
+          });
           let withdrawalEligibility = 'ELIGIBLE';
           if (user.emailVerified === false) withdrawalEligibility = 'EMAIL_VERIFICATION_REQUIRED';
           else if (user.kycStatus !== 'APPROVED') withdrawalEligibility = 'KYC_REQUIRED';
           else if (!user.hasWallet) withdrawalEligibility = 'WALLET_MISSING';
-          else if (!inGracePeriod && !(user.unwithdrawnProfitCounter >= WITHDRAWAL_LOCK_PROFIT_TARGET)) withdrawalEligibility = 'PROFIT_LOCKED';
+          else if (!eligibility.canWithdraw) withdrawalEligibility = 'PROFIT_LOCKED';
           return {
             userId: user._id,
             name: user.name,

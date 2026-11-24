@@ -3,11 +3,11 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import {
   MINIMUM_INITIAL_DEPOSIT,
-  WITHDRAWAL_GRACE_PERIOD_HOURS,
   WITHDRAWAL_LOCK_PROFIT_TARGET,
   WITHDRAWAL_FEE_PERCENTAGE,
 } from '../config/constants.js';
 import { getMinimumDepositForBalance } from '../utils/depositRules.js';
+import { expireWithdrawalGracePeriod, getWithdrawalEligibility } from '../utils/withdrawalRules.js';
 
 // @desc    Get live user wallet details & audit stats
 // @route   GET /api/wallet/me
@@ -86,31 +86,12 @@ export const getWithdrawalInfo = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
 
-    const priorWithdrawalCount = await Transaction.countDocuments({
-      user: req.user._id,
-      type: 'WITHDRAWAL_REQUEST',
-      status: { $in: ['PENDING', 'COMPLETED'] },
-    });
-
-    let isInGracePeriod = false;
-    let hoursRemainingInGrace = 0;
-
-    if (user.firstDepositAt) {
-      const now = new Date();
-      const firstDepositTime = new Date(user.firstDepositAt);
-      const hoursElapsed = (now - firstDepositTime) / (1000 * 60 * 60);
-
-      if (!user.hasUsedGracePeriod && priorWithdrawalCount === 0 && hoursElapsed < WITHDRAWAL_GRACE_PERIOD_HOURS) {
-        isInGracePeriod = true;
-        hoursRemainingInGrace = Math.max(0, WITHDRAWAL_GRACE_PERIOD_HOURS - hoursElapsed).toFixed(4);
-      } else if (!user.hasUsedGracePeriod && hoursElapsed >= WITHDRAWAL_GRACE_PERIOD_HOURS) {
-        user.hasUsedGracePeriod = true;
-        await user.save();
-      }
-    }
-
-    const profitTargetMet = wallet.unwithdrawnProfitCounter >= WITHDRAWAL_LOCK_PROFIT_TARGET;
-    const canWithdraw = isInGracePeriod || profitTargetMet;
+    const [priorWithdrawalCount, unlockedCount] = await Promise.all([
+      Transaction.countDocuments({ user: req.user._id, type: 'WITHDRAWAL_REQUEST', status: { $in: ['PENDING', 'COMPLETED'] } }),
+      Transaction.countDocuments({ user: req.user._id, type: 'WITHDRAWAL_REQUEST', status: 'COMPLETED', profitUnlockQualified: true }),
+    ]);
+    await expireWithdrawalGracePeriod(user);
+    const eligibility = getWithdrawalEligibility({ user, wallet, priorWithdrawalCount, permanentlyUnlocked: unlockedCount > 0 });
 
     res.status(200).json({
       success: true,
@@ -122,11 +103,8 @@ export const getWithdrawalInfo = async (req, res, next) => {
         trc20Address: wallet.trc20Address,
         withdrawalRules: {
           hasUsedGracePeriod: user.hasUsedGracePeriod || priorWithdrawalCount > 0,
-          isInGracePeriod,
-          hoursRemainingInGrace,
           profitLockTarget: WITHDRAWAL_LOCK_PROFIT_TARGET,
-          profitTargetMet,
-          canWithdraw,
+          ...eligibility,
           platformFeePercentage: WITHDRAWAL_FEE_PERCENTAGE * 100,
         },
       },

@@ -64,7 +64,7 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
 test('requestable gross mirrors KYC, profit target, first grace period and pending/completed requests', async (t) => {
   const now = Date.parse('2026-01-02T00:00:00Z');
   t.mock.method(Date, 'now', () => now);
-  const ids = Array.from({ length: 12 }, () => new mongoose.Types.ObjectId());
+  const ids = Array.from({ length: 14 }, () => new mongoose.Types.ObjectId());
   const base = {
     name: 'User', email: 'user@example.com', mainBalance: 100, profitBalance: 10, referralBalance: 5,
     status: 'BELOW_THRESHOLD', kycStatus: 'APPROVED', hasWallet: true,
@@ -79,6 +79,8 @@ test('requestable gross mirrors KYC, profit target, first grace period and pendi
     { firstDepositAt: null, unwithdrawnProfitCounter: 49.99 },
     { firstDepositAt: null, unwithdrawnProfitCounter: 50 },
     { emailVerified: false, unwithdrawnProfitCounter: 50 },
+    { firstDepositAt: null },
+    { firstDepositAt: null },
   ];
   t.mock.method(User, 'aggregate', async () => [{
     count: [{ total: ids.length }], users: variants.map((variant, index) => ({ ...base, ...variant, _id: ids[index] })),
@@ -86,12 +88,14 @@ test('requestable gross mirrors KYC, profit target, first grace period and pendi
   t.mock.method(Transaction, 'aggregate', async () => [
     { _id: ids[4], priorWithdrawalCount: 1 }, { _id: ids[5], priorWithdrawalCount: 1 },
     { _id: ids[10], priorWithdrawalCount: 1 },
+    { _id: ids[12], priorWithdrawalCount: 1, qualifiedWithdrawalCount: 1 },
+    { _id: ids[13], priorWithdrawalCount: 1, qualifiedWithdrawalCount: 0 },
   ]);
   const data = await invoke(getAdminUserOverview);
-  assert.deepEqual(data.users.map((user) => user.requestableGross), [115, 0, 0, 0, 0, 0, 0, 115, 0, 0, 115, 0]);
+  assert.deepEqual(data.users.map((user) => user.requestableGross), [115, 0, 0, 0, 0, 0, 0, 115, 0, 0, 115, 0, 115, 0]);
   assert.deepEqual(data.users.map((user) => user.withdrawalEligibility), [
     'ELIGIBLE', 'KYC_REQUIRED', 'PROFIT_LOCKED', 'PROFIT_LOCKED', 'PROFIT_LOCKED',
-    'PROFIT_LOCKED', 'PROFIT_LOCKED', 'ELIGIBLE', 'WALLET_MISSING', 'PROFIT_LOCKED', 'ELIGIBLE', 'EMAIL_VERIFICATION_REQUIRED',
+    'PROFIT_LOCKED', 'PROFIT_LOCKED', 'ELIGIBLE', 'WALLET_MISSING', 'PROFIT_LOCKED', 'ELIGIBLE', 'EMAIL_VERIFICATION_REQUIRED', 'ELIGIBLE', 'PROFIT_LOCKED',
   ]);
   assert.ok(data.users.every((user) => user.walletTotal === 115));
   assert.ok(data.users.every((user) => !('kycStatus' in user) && !('firstDepositAt' in user)));

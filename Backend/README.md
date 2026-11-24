@@ -41,6 +41,21 @@ administrator's status and does not independently confirm an on-chain transfer.
 Transaction emails are best-effort: delivery failures are logged and do not
 roll back transactions, and there is no automatic delivery retry queue.
 
+For withdrawals submitted under the current policy, an approved request of at
+least $50 made when the $50 unwithdrawn profit and referral target is met
+permanently removes that target for later requests. Pending and rejected
+requests do not unlock it; an early grace-period request does not qualify unless
+the target was also met. Existing requests created before this change do not
+contain a qualifying snapshot and cannot be reliably classified automatically.
+An administrator may review a historical completed withdrawal of at least $50
+using `POST /api/admin/users/:userId/withdrawal-unlock` with `transactionId`
+and a review `reason` (10–300 characters). This records the administrator, time,
+and reason on the transaction; only historical requests without a qualifying
+snapshot are eligible for review. It does not change the balance or transaction
+status. KYC, available balance, and the 20% fee still apply.
+If a request reserves principal below $300, yield pauses and an in-app
+notification explains the shortfall; rejection restores reserved funds.
+
 Login, `GET /api/auth/me`, and `PUT /api/user/profile`
 responses include `country`. It is `null` for existing users without one.
 The new fields are required for registration but remain optional in stored

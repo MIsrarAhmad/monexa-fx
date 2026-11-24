@@ -17,6 +17,7 @@ import {
   getAdminUserFinancialLedger,
   getAdminReferralRankings,
   createAnnouncement,
+  reviewLegacyWithdrawalUnlock,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -35,6 +36,7 @@ router.get('/financial-ledger/users/:userId', getAdminUserFinancialLedger);
 router.get('/referral-rankings', getAdminReferralRankings);
 router.post('/announcements', createAnnouncement);
 router.delete('/users/:userId', permanentlyDeleteUser);
+router.post('/users/:userId/withdrawal-unlock', reviewLegacyWithdrawalUnlock);
 router.get('/withdrawals/pending', getPendingWithdrawals);
 router.put('/withdrawals/:id/action', processWithdrawalAction);
 

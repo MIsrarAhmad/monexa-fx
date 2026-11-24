@@ -4,12 +4,12 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import {
   MINIMUM_INITIAL_DEPOSIT,
-  WITHDRAWAL_GRACE_PERIOD_HOURS,
   WITHDRAWAL_LOCK_PROFIT_TARGET,
   WITHDRAWAL_FEE_PERCENTAGE,
 } from '../config/constants.js';
 import { notifyUser } from '../services/notificationService.js';
 import { sendTransactionEmail } from '../utils/transactionEmail.js';
+import { expireWithdrawalGracePeriod, getWithdrawalEligibility } from '../utils/withdrawalRules.js';
 
 // @desc    Submit Cashout/Withdrawal Request (Sends to Admin Pending Queue)
 // @route   POST /api/withdrawals/request
@@ -57,31 +57,17 @@ export const requestWithdrawal = async (req, res, next) => {
     }
 
     // Profit Lock Check ($50 profit target)
-    const priorWithdrawalCount = await Transaction.countDocuments({
-      user: req.user._id,
-      type: 'WITHDRAWAL_REQUEST',
-      status: { $in: ['PENDING', 'COMPLETED'] },
-    });
+    const [priorWithdrawalCount, unlockedCount] = await Promise.all([
+      Transaction.countDocuments({ user: req.user._id, type: 'WITHDRAWAL_REQUEST', status: { $in: ['PENDING', 'COMPLETED'] } }),
+      Transaction.countDocuments({ user: req.user._id, type: 'WITHDRAWAL_REQUEST', status: 'COMPLETED', profitUnlockQualified: true }),
+    ]);
+    await expireWithdrawalGracePeriod(user);
+    const eligibility = getWithdrawalEligibility({ user, wallet, priorWithdrawalCount, permanentlyUnlocked: unlockedCount > 0 });
 
-    let isInGracePeriod = false;
-    if (user.firstDepositAt) {
-      const hoursElapsed = (new Date() - new Date(user.firstDepositAt)) / (1000 * 60 * 60);
-
-      if (!user.hasUsedGracePeriod && priorWithdrawalCount === 0 && hoursElapsed < WITHDRAWAL_GRACE_PERIOD_HOURS) {
-        isInGracePeriod = true;
-      } else if (!user.hasUsedGracePeriod && hoursElapsed >= WITHDRAWAL_GRACE_PERIOD_HOURS) {
-        user.hasUsedGracePeriod = true;
-        await user.save();
-      }
-    }
-
-    const profitTargetMet = wallet.unwithdrawnProfitCounter >= WITHDRAWAL_LOCK_PROFIT_TARGET;
-    const canWithdraw = isInGracePeriod || profitTargetMet;
-
-    if (!canWithdraw) {
+    if (!eligibility.canWithdraw) {
       return res.status(400).json({
         success: false,
-        error: `Withdrawal locked. Generate at least $${WITHDRAWAL_LOCK_PROFIT_TARGET} USDT in new profit to unlock withdrawals. Current: $${wallet.unwithdrawnProfitCounter.toFixed(2)} USDT.`,
+        error: `Withdrawal locked. Accumulate at least $${WITHDRAWAL_LOCK_PROFIT_TARGET} USDT in unwithdrawn profit and referral credits. Current: $${wallet.unwithdrawnProfitCounter.toFixed(2)} USDT.`,
       });
     }
 
@@ -89,7 +75,7 @@ export const requestWithdrawal = async (req, res, next) => {
     const feeDeducted = Number((withdrawAmount * WITHDRAWAL_FEE_PERCENTAGE).toFixed(2));
     const netAmount = Number((withdrawAmount - feeDeducted).toFixed(2));
 
-    // Instant Balance Reservation (Prevents double spending while under admin review)
+    const previousMainBalance = wallet.mainBalance;
     let remainingToDeduct = withdrawAmount;
     let reservedProfitBalance = 0;
     let reservedReferralBalance = 0;
@@ -136,6 +122,7 @@ export const requestWithdrawal = async (req, res, next) => {
       reservedProfitBalance,
       reservedReferralBalance,
       reservedMainBalance,
+      profitUnlockQualified: eligibility.profitTargetMet && withdrawAmount >= WITHDRAWAL_LOCK_PROFIT_TARGET,
       feeDeducted,
       netAmount,
       paymentMethod: 'TRC20',
@@ -151,6 +138,16 @@ export const requestWithdrawal = async (req, res, next) => {
       message: `Your $${withdrawAmount.toFixed(2)} USDT TRC20 withdrawal request is awaiting admin review.`,
       url: '/transactions',
     });
+    if (previousMainBalance >= MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance < MINIMUM_INITIAL_DEPOSIT) {
+      const shortfall = Math.max(0, Math.ceil((MINIMUM_INITIAL_DEPOSIT - wallet.mainBalance) * 100) / 100);
+      await notifyUser({
+        userId: req.user._id,
+        type: 'YIELD_PAUSED',
+        title: 'Profit paused while withdrawal is pending',
+        message: `Your reserved withdrawal brought principal below $300. Profit is paused. Add $${shortfall.toFixed(2)} USDT to reach $300 and restart the 24-hour activation, or withdraw the remaining balance when eligible. Rejected requests restore reserved funds.`,
+        url: '/dashboard',
+      });
+    }
 
     res.status(200).json({
       success: true,

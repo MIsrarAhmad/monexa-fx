@@ -50,6 +50,19 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    profitUnlockQualified: {
+      type: Boolean,
+      default: false,
+    },
+    profitUnlockReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    profitUnlockReviewedAt: Date,
+    profitUnlockReviewReason: {
+      type: String,
+      maxlength: 300,
+    },
     status: {
       type: String,
       enum: ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED'],
