@@ -1,13 +1,31 @@
-import { DAILY_YIELD_RATE, MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-export const calculateDailyYield = (investmentBalance) => {
-  if (investmentBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
-  return Number((investmentBalance * DAILY_YIELD_RATE).toFixed(2));
+const decimalParts = (amount) => {
+  const [mantissa, exponent = '0'] = amount.toString().split('e');
+  const [whole, fractional = ''] = mantissa.split('.');
+  return { digits: BigInt(whole + fractional), exponent: Number(exponent) - fractional.length };
 };
 
-export const getMonthlyProfitForecast = ({ mainBalance, hasWallet, yieldPaused, nextYieldAt, credited, now }) => {
+export const calculateDailyYield = (mainBalance, profitBalance) => {
+  if (!Number.isFinite(mainBalance) || mainBalance < 0
+    || !Number.isFinite(profitBalance) || profitBalance < 0) {
+    throw new Error('Invalid balance for daily yield calculation');
+  }
+  if (mainBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
+  const main = decimalParts(mainBalance);
+  const profit = decimalParts(profitBalance);
+  const exponent = Math.min(main.exponent, profit.exponent, 0);
+  // Sum decimal representations exactly so floating-point addition cannot round up a step.
+  const total = main.digits * 10n ** BigInt(main.exponent - exponent)
+    + profit.digits * 10n ** BigInt(profit.exponent - exponent);
+  const steps = total / (100n * 10n ** BigInt(-exponent));
+  if (steps > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Daily yield exceeds safe calculation limits');
+  return Number(steps);
+};
+
+export const getMonthlyProfitForecast = ({ mainBalance, profitBalance, hasWallet, yieldPaused, nextYieldAt, credited, now }) => {
   const date = new Date(now);
   const starts = Array.from({ length: 5 }, (_, index) => (
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + index, 1)
@@ -19,20 +37,25 @@ export const getMonthlyProfitForecast = ({ mainBalance, hasWallet, yieldPaused, 
   let status = 'AVAILABLE';
 
   if (!hasWallet) status = 'WALLET_MISSING';
-  else if (!Number.isFinite(mainBalance) || mainBalance < 0) status = 'BALANCE_UNAVAILABLE';
+  else if (!Number.isFinite(mainBalance) || mainBalance < 0
+    || !Number.isFinite(profitBalance) || profitBalance < 0) status = 'BALANCE_UNAVAILABLE';
   else if (mainBalance < MINIMUM_INITIAL_DEPOSIT) {
     months.forEach((month) => { month.estimated = 0; });
   } else {
     const next = nextYieldAt ? new Date(nextYieldAt).getTime() : NaN;
     if (yieldPaused || !Number.isFinite(next)) status = 'SCHEDULE_UNAVAILABLE';
     else {
-      const daily = calculateDailyYield(mainBalance);
-      const counts = [0, 0, 0, 0];
+      let projectedProfit = profitBalance;
+      const amounts = [0, 0, 0, 0];
       for (let due = Math.max(now, next); due < starts[4]; due += DAY_IN_MS) {
         const index = starts.findIndex((start, position) => position < 4 && due >= start && due < starts[position + 1]);
-        if (index >= 0) counts[index]++;
+        if (index >= 0) {
+          const daily = calculateDailyYield(mainBalance, projectedProfit);
+          amounts[index] += daily;
+          projectedProfit += daily;
+        }
       }
-      months.forEach((month, index) => { month.estimated = Number((counts[index] * daily).toFixed(2)); });
+      months.forEach((month, index) => { month.estimated = amounts[index]; });
     }
   }
 

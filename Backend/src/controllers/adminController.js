@@ -447,7 +447,7 @@ export const getAdminUserOverview = async (req, res, next) => {
             withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
             totalReferralEarned: totals.totalReferralEarned || 0,
             monthlyProfit: getMonthlyProfitForecast({
-              mainBalance: user.mainBalance, hasWallet: user.hasWallet,
+              mainBalance: user.mainBalance, profitBalance: user.profitBalance, hasWallet: user.hasWallet,
               yieldPaused: user.yieldPaused, nextYieldAt: user.nextYieldAt,
               credited: totals.currentMonthProfit || 0, now,
             }),

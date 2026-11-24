@@ -96,7 +96,7 @@ export const depositApprovedTemplate = (name, amount) => {
       <p style="margin:0 0 5px;color:#164e63;"><strong>Status:</strong> <span style="color:#15803d;font-weight:700;">APPROVED</span></p>
       <p style="margin:0;color:#164e63;"><strong>Credited amount:</strong> $${escapeHtml(amount)} USDT</p>
     </div>
-    <p style="margin:0;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;">The stated daily return is 1% of qualifying investment balance after activation and is not compounded. Eligibility pauses if the main balance falls below $300; restoring it starts a new 24-hour period, with no backdated payments.</p>
+    <p style="margin:0;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;">After activation, the stated daily return is $1 for each complete $100 of main balance plus retained profit; referral balance is excluded. Profit withdrawals can lower the daily amount. Eligibility pauses if the main balance falls below $300; restoring it starts a new 24-hour period, with no backdated payments.</p>
   `;
   return baseLayout(content, `Your deposit of $${escapeHtml(amount)} USDT has been credited.`);
 };

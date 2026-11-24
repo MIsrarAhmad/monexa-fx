@@ -50,10 +50,14 @@ principal at submission is recorded for new manual requests only.
 The admin user overview includes monthly daily-yield reporting in UTC. The
 current month's credited amount comes from recorded daily-yield transactions;
 the month-end and next three calendar months are estimates using the current
-principal-only daily rate and next scheduled credit. Estimates assume no
-balance or schedule changes, exclude referral income and withdrawal fees, and
-are not payment obligations. Missing wallets or unavailable schedules are
-reported as unavailable rather than as zero.
+$100-step rule and next scheduled credit. While the main balance is at least
+$300, each credit is $1 for every complete $100 of main balance plus retained
+profit; referral balance is excluded. Each projected credit increases retained
+profit for subsequent estimates. Forecasts assume no deposits, withdrawals or
+schedule changes, exclude referral income and withdrawal fees, and are not
+payment obligations. Missing wallets or unavailable schedules are reported as
+unavailable rather than as zero. Existing credits and schedules are not changed
+when the rule is deployed; it applies at the next scheduled credit.
 
 Admins can correct a pending manual TRC20 deposit with an uploaded proof by
 supplying `correctedAmount` and `correctionReason` (10–300 characters) when

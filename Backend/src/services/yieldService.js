@@ -137,7 +137,7 @@ export const processDailyYields = async () => {
 
       if (now < wallet.nextYieldAt) continue;
 
-      const yieldAmount = calculateDailyYield(wallet.mainBalance);
+      const yieldAmount = calculateDailyYield(wallet.mainBalance, wallet.profitBalance);
 
       if (yieldAmount > 0) {
         wallet.profitBalance += yieldAmount;
@@ -149,13 +149,13 @@ export const processDailyYields = async () => {
           user: wallet.user._id,
           type: 'DAILY_YIELD',
           amount: yieldAmount,
-          description: `Daily 1% yield on $${wallet.mainBalance.toFixed(2)} USDT qualifying investment balance`,
+          description: 'Daily stepped yield: $1 per complete $100 of main balance plus retained profit',
         });
         await notifyUser({
           userId: wallet.user._id,
           type: 'DAILY_YIELD',
           title: 'Your daily profit has been credited',
-          message: `$${yieldAmount.toFixed(2)} USDT (1% of your qualifying investment balance) has been added to your profit balance.`,
+          message: `$${yieldAmount.toFixed(2)} USDT has been added to your profit balance under the $100-step rule.`,
           url: '/transactions',
         });
 

@@ -81,9 +81,9 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
   ]);
 });
 
-test('monthly forecast uses UTC calendar months, actual credits and the existing principal-only yield', () => {
+test('monthly forecast uses UTC months and increases the step as retained profit grows', () => {
   const forecast = getMonthlyProfitForecast({
-    mainBalance: 300, hasWallet: true, yieldPaused: false,
+    mainBalance: 300, profitBalance: 0, hasWallet: true, yieldPaused: false,
     nextYieldAt: new Date('2028-02-01T00:00:00Z'),
     credited: 9, now: Date.parse('2028-01-31T12:00:00Z'),
   });
@@ -92,28 +92,28 @@ test('monthly forecast uses UTC calendar months, actual credits and the existing
     current: { month: '2028-01', credited: 9, estimatedTotal: 9 },
     nextMonths: [
       { month: '2028-02', estimated: 87 },
-      { month: '2028-03', estimated: 93 },
-      { month: '2028-04', estimated: 90 },
+      { month: '2028-03', estimated: 120 },
+      { month: '2028-04', estimated: 161 },
     ],
-    nextThreeTotal: 270,
+    nextThreeTotal: 368,
   });
 });
 
 test('monthly forecast handles overdue schedules, threshold and unavailable wallets without inventing earnings', () => {
   const now = Date.parse('2026-01-31T23:30:00Z');
   const input = {
-    mainBalance: 300, hasWallet: true, yieldPaused: false,
+    mainBalance: 300, profitBalance: 0, hasWallet: true, yieldPaused: false,
     nextYieldAt: new Date('2026-01-29T23:30:00Z'), credited: 6, now,
   };
   const overdue = getMonthlyProfitForecast(input);
   assert.equal(overdue.current.estimatedTotal, 9);
-  assert.deepEqual(overdue.nextMonths.map((month) => month.estimated), [84, 93, 90]);
+  assert.deepEqual(overdue.nextMonths.map((month) => month.estimated), [84, 120, 161]);
   const belowThreshold = getMonthlyProfitForecast({ ...input, mainBalance: 299.99, yieldPaused: true });
   assert.equal(belowThreshold.current.estimatedTotal, 6);
   assert.equal(belowThreshold.nextThreeTotal, 0);
   for (const variant of [
     { hasWallet: false }, { yieldPaused: true }, { nextYieldAt: null },
-    { mainBalance: NaN },
+    { mainBalance: NaN }, { profitBalance: NaN }, { profitBalance: -1 },
   ]) {
     const unavailable = getMonthlyProfitForecast({ ...input, ...variant });
     assert.notEqual(unavailable.status, 'AVAILABLE');
@@ -141,11 +141,11 @@ test('overview reports recorded profit separately from future estimates for each
     status: 'AVAILABLE',
     current: { month: '2026-01', credited: 42, estimatedTotal: 45 },
     nextMonths: [
-      { month: '2026-02', estimated: 84 },
-      { month: '2026-03', estimated: 93 },
-      { month: '2026-04', estimated: 90 },
+      { month: '2026-02', estimated: 96 },
+      { month: '2026-03', estimated: 142 },
+      { month: '2026-04', estimated: 189 },
     ],
-    nextThreeTotal: 267,
+    nextThreeTotal: 427,
   });
 });
 
