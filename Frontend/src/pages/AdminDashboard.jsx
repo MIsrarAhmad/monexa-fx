@@ -40,6 +40,9 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '..
 
 const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
 const formatDate = (date) => date ? new Date(date).toLocaleDateString() : 'Unavailable';
+const formatMonth = (month) => new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', {
+  month: 'short', year: 'numeric', timeZone: 'UTC',
+});
 const formatCounts = (counts) => counts
   ? `${counts.completed} completed · ${counts.pending} pending · ${counts.rejected} rejected${counts.approved ? ` · ${counts.approved} approved` : ''}`
   : 'Counts unavailable';
@@ -1314,15 +1317,19 @@ const AdminDashboard = () => {
               <p className="mb-4 text-xs leading-relaxed text-slate-400">
                 Amounts are completed totals; counts distinguish completed, pending and rejected requests. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
               </p>
+              <p className="mb-4 text-xs leading-relaxed text-slate-400">
+                Monthly profit uses UTC calendar months. Forecasts use the current 1% principal-only rule and assume the principal and schedule stay unchanged. They exclude referrals and withdrawal fees, may differ if processing is delayed, and are not confirmed payments.
+              </p>
               <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
               <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
-                <table className="w-full min-w-[1400px] text-left border-collapse text-xs">
+                <table className="w-full min-w-[1660px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
                       <th className="py-3 px-3">Name & Email</th>
                       <th className="py-3 px-3">Country</th>
                       <th className="py-3 px-3">Completed deposits</th>
                       <th className="py-3 px-3">Completed withdrawals</th>
+                      <th className="py-3 px-3">Monthly profit</th>
                       <th className="py-3 px-3">Current principal</th>
                       <th className="py-3 px-3">Wallet balance</th>
                       <th className="py-3 px-3">Requestable gross</th>
@@ -1335,15 +1342,15 @@ const AdminDashboard = () => {
                   <tbody className="divide-y divide-slate-800/60">
                     {loadingUserOverview ? (
                       <tr>
-                        <td colSpan={11} className="py-4 text-center text-slate-500">
+                        <td colSpan={12} className="py-4 text-center text-slate-500">
                           Loading user directory...
                         </td>
                       </tr>
                     ) : userOverviewError ? (
-                      <tr><td colSpan={11} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
+                      <tr><td colSpan={12} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
                     ) : overviewUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="py-4 text-center text-slate-500">
+                        <td colSpan={12} className="py-4 text-center text-slate-500">
                           No users matched your search or filter criteria.
                         </td>
                       </tr>
@@ -1358,6 +1365,27 @@ const AdminDashboard = () => {
                           <td className="py-3 px-3 text-slate-300">{countryName(u.country)}</td>
                           <td className="py-3 px-3 text-cyan-300">{formatUsdt(u.totalDeposited)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.depositCounts)}</div></td>
                           <td className="py-3 px-3 text-rose-300">{formatUsdt(u.totalWithdrawn)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.withdrawalCounts)}</div></td>
+                          <td className="min-w-[220px] py-3 px-3 align-top">
+                            {u.monthlyProfit ? (
+                              <div className="space-y-1">
+                                <div className="text-slate-300">{formatMonth(u.monthlyProfit.current.month)} credited: <span className="font-semibold text-emerald-300">{formatUsdt(u.monthlyProfit.current.credited)}</span></div>
+                                <div className="text-slate-400">Month end estimate: {u.monthlyProfit.current.estimatedTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.current.estimatedTotal)}</div>
+                                <div className="text-cyan-300">Next 3 months estimate: {u.monthlyProfit.nextThreeTotal === null ? 'Unavailable' : formatUsdt(u.monthlyProfit.nextThreeTotal)}</div>
+                                {u.monthlyProfit.status === 'WALLET_MISSING' && <div className="text-amber-300">Wallet unavailable</div>}
+                                {u.monthlyProfit.status === 'BALANCE_UNAVAILABLE' && <div className="text-amber-300">Principal unavailable</div>}
+                                {u.monthlyProfit.status === 'SCHEDULE_UNAVAILABLE' && <div className="text-amber-300">Profit schedule unavailable or paused</div>}
+                                <details className="text-slate-400">
+                                  <summary className="cursor-pointer text-cyan-400">Monthly breakdown</summary>
+                                  {u.monthlyProfit.nextMonths.map((month) => (
+                                    <div key={month.month} className="mt-1 flex justify-between gap-3">
+                                      <span>{formatMonth(month.month)}</span>
+                                      <span>{month.estimated === null ? 'Unavailable' : formatUsdt(month.estimated)}</span>
+                                    </div>
+                                  ))}
+                                </details>
+                              </div>
+                            ) : <span className="text-amber-300">Monthly report unavailable</span>}
+                          </td>
                           <td className="py-3 px-3 font-bold text-cyan-400">{formatUsdt(u.mainBalance)}</td>
                           <td className="py-3 px-3 font-bold text-slate-200">{formatUsdt(u.walletTotal)}</td>
                           <td className="py-3 px-3 font-bold text-emerald-400">
