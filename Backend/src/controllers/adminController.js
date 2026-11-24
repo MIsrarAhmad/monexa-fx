@@ -21,7 +21,7 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 export const reviewLegacyWithdrawalUnlock = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { transactionId, reason } = req.body;
+    const { transactionId, reason } = req.body || {};
     if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(transactionId)
       || typeof reason !== 'string' || reason.trim().length < 10 || reason.trim().length > 300) {
       return res.status(400).json({ success: false, error: 'Provide valid user and transaction IDs and a review reason of 10 to 300 characters.' });

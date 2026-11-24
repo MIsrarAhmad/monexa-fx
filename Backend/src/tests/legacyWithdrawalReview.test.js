@@ -56,6 +56,7 @@ test('only an administrator can review one matching historical completed withdra
   assert.equal((await post(body)).status, 403);
   assert.equal(update.mock.callCount(), 0);
   role = 'admin';
+  assert.equal((await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status, 400);
   assert.equal((await post({ ...body, reason: 'short' })).status, 400);
   assert.equal((await post({ ...body, transactionId: 'invalid' })).status, 400);
   assert.equal((await post(body)).status, 200);
