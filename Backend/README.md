@@ -59,6 +59,17 @@ payment obligations. Missing wallets or unavailable schedules are reported as
 unavailable rather than as zero. Existing credits and schedules are not changed
 when the rule is deployed; it applies at the next scheduled credit.
 
+The admin financial report for a selected user separates recorded investment
+profit, direct referral bonuses and passive referral credits, and reports
+completed versus pending withdrawals. Requestable gross and estimated net
+reflect current wallet funds, eligibility and the 20% fee; a valid destination
+and admin review are still required. Completed withdrawal status does not
+independently confirm an on-chain transfer. Passive referral projections use
+currently qualifying direct referrals and their schedules, assume they remain
+eligible, and exclude future direct bonuses or new referrals. Current-month
+totals include recorded credits; future months are estimates only. Unknown
+balances and schedules make the affected estimates unavailable.
+
 Admins can correct a pending manual TRC20 deposit with an uploaded proof by
 supplying `correctedAmount` and `correctionReason` (10–300 characters) when
 approving. The verified amount must be positive with at most two decimals.

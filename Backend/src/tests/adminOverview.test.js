@@ -6,9 +6,10 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Transaction from '../models/Transaction.js';
-import { getAdminCountryCounts, getAdminStats, getAdminUserOverview } from '../controllers/adminController.js';
+import Referral from '../models/Referral.js';
+import { getAdminCountryCounts, getAdminStats, getAdminUserFinancialLedger, getAdminUserOverview } from '../controllers/adminController.js';
 import adminRoutes from '../routes/adminRoutes.js';
-import { getMonthlyProfitForecast } from '../utils/yieldRules.js';
+import { getMonthlyPassiveReferralForecast, getMonthlyProfitForecast } from '../utils/yieldRules.js';
 
 const response = () => ({
   statusCode: 200,
@@ -149,6 +150,95 @@ test('overview reports recorded profit separately from future estimates for each
   });
 });
 
+test('passive referral forecast uses each eligible schedule and excludes unqualified referrals', () => {
+  const now = Date.parse('2026-01-30T12:00:00Z');
+  const referrals = [
+    { mainBalance: 300, hasTriggeredInitialBonus: true, isPassiveEligible: true, lastPassivePayoutAt: new Date('2026-01-29T12:00:00Z') },
+    { mainBalance: 299, hasTriggeredInitialBonus: true, isPassiveEligible: true, lastPassivePayoutAt: new Date('2026-01-29T12:00:00Z') },
+    { mainBalance: 300, hasTriggeredInitialBonus: false },
+  ];
+  const forecast = getMonthlyPassiveReferralForecast({ referrals, credited: 1.2, now });
+  assert.equal(forecast.eligibleCount, 1);
+  assert.deepEqual(forecast.current, { month: '2026-01', credited: 1.2, estimatedTotal: 1.6 });
+  assert.deepEqual(forecast.nextMonths.map((month) => month.estimated), [5.6, 6.2, 6]);
+  assert.equal(forecast.nextThreeTotal, 17.8);
+  const restarting = getMonthlyPassiveReferralForecast({
+    referrals: [{ ...referrals[0], isPassiveEligible: false }], credited: 0, now,
+  });
+  assert.equal(restarting.current.estimatedTotal, 0.2);
+  const invalid = getMonthlyPassiveReferralForecast({
+    referrals: [{ ...referrals[0], lastPassivePayoutAt: 'invalid' }], credited: 0, now,
+  });
+  assert.equal(invalid.status, 'SCHEDULE_UNAVAILABLE');
+  assert.equal(invalid.nextThreeTotal, null);
+  const missingBalance = getMonthlyPassiveReferralForecast({
+    referrals: [{ ...referrals[0], mainBalance: null }], credited: 0, now,
+  });
+  assert.equal(missingBalance.status, 'BALANCE_UNAVAILABLE');
+  assert.equal(missingBalance.current.estimatedTotal, null);
+  const multiple = getMonthlyPassiveReferralForecast({
+    referrals: [referrals[0], { ...referrals[0], lastPassivePayoutAt: new Date('2026-01-30T23:00:00Z') }],
+    credited: 0, now,
+  });
+  assert.equal(multiple.eligibleCount, 2);
+  assert.equal(multiple.current.estimatedTotal, 0.6);
+  assert.equal(multiple.nextMonths[0].estimated, 11.2);
+});
+
+test('selected user report separates referral earnings, forecasts and withdrawal eligibility', async (t) => {
+  const now = Date.parse('2026-01-30T12:00:00Z');
+  t.mock.method(Date, 'now', () => now);
+  const id = new mongoose.Types.ObjectId();
+  const referredId = new mongoose.Types.ObjectId();
+  const user = { _id: id, name: 'User', email: 'user@example.com', referralCode: 'CODE', kycStatus: 'APPROVED' };
+  let wallet = { mainBalance: 300, profitBalance: 50, referralBalance: 10, unwithdrawnProfitCounter: 50, nextYieldAt: new Date('2026-01-31T12:00:00Z') };
+  t.mock.method(User, 'findOne', () => ({ select: () => ({ lean: async () => user }) }));
+  t.mock.method(Wallet, 'findOne', () => ({ select: () => ({ lean: async () => wallet }) }));
+  t.mock.method(Wallet, 'find', () => ({ select: () => ({ lean: async () => [{ user: referredId, mainBalance: 300 }] }) }));
+  t.mock.method(Referral, 'find', () => ({ select: () => ({ populate: () => ({ lean: async () => [{
+    referredUser: { _id: referredId, name: 'Member', email: 'member@example.com' },
+    hasTriggeredInitialBonus: true, isPassiveEligible: true, lastPassivePayoutAt: new Date('2026-01-29T12:00:00Z'),
+    totalEarnedFromUser: 51.2,
+  }] }) }) }));
+  const aggregate = t.mock.method(Transaction, 'aggregate', async () => [{
+    _id: id, totalDeposited: 300, totalProfit: 50, totalReferralEarned: 51.2,
+    totalDirectReferral: 50, totalPassiveReferral: 1.2, currentMonthProfit: 42, currentMonthPassiveReferral: 1.2,
+    withdrawalPendingAmount: 10,
+  }]);
+  t.mock.method(Transaction, 'countDocuments', async () => 0);
+  t.mock.method(Transaction, 'find', () => ({ select: () => ({ populate: () => ({ sort: () => ({
+    skip: () => ({ limit: () => ({ lean: async () => [] }) }),
+  }) }) }) }));
+  const res = response();
+  const run = async () => {
+    await getAdminUserFinancialLedger({ params: { userId: String(id) }, query: {} }, res, (error) => { throw error; });
+    return res.body.data;
+  };
+  const report = await run();
+  const grouped = aggregate.mock.calls[0].arguments[0][1].$group;
+  assert.deepEqual(Object.keys(grouped.totalReferralEarned), ['$sum']);
+  assert.deepEqual(grouped.totalDirectReferral.$sum.$cond[0], { $eq: ['$type', 'REFERRAL_DIRECT_BONUS'] });
+  assert.deepEqual(grouped.totalPassiveReferral.$sum.$cond[0], { $eq: ['$type', 'REFERRAL_DAILY_PASSIVE'] });
+  assert.ok(grouped.currentMonthDirectReferral && grouped.currentMonthPassiveReferral);
+  assert.deepEqual(report.summary.withdrawal, { eligibility: 'ELIGIBLE', requestableGross: 360, estimatedFee: 72, estimatedNet: 288 });
+  assert.equal(report.summary.totalDirectReferral, 50);
+  assert.equal(report.summary.totalPassiveReferral, 1.2);
+  assert.equal(report.summary.withdrawalPendingAmount, 10);
+  assert.equal(report.referrals.forecast.current.estimatedTotal, 1.6);
+  assert.equal(report.investmentForecast.nextThreeTotal, 427);
+  assert.equal(report.user.kycStatus, undefined);
+  wallet.unwithdrawnProfitCounter = 0;
+  assert.equal((await run()).summary.withdrawal.eligibility, 'PROFIT_LOCKED');
+  user.kycStatus = 'PENDING';
+  assert.equal((await run()).summary.withdrawal.eligibility, 'KYC_REQUIRED');
+  user.kycStatus = 'APPROVED';
+  wallet.profitBalance = null;
+  assert.equal((await run()).summary.withdrawal.requestableGross, null);
+  assert.equal((await run()).summary.withdrawal.eligibility, 'BALANCE_UNAVAILABLE');
+  wallet = null;
+  assert.equal((await run()).summary.withdrawal.requestableGross, null);
+});
+
 test('requestable gross mirrors KYC, profit target, first grace period and pending/completed requests', async (t) => {
   const now = Date.parse('2026-01-02T00:00:00Z');
   t.mock.method(Date, 'now', () => now);
@@ -273,4 +363,7 @@ test('overview and country routes require authenticated administrators', async (
     assert.equal((await result.json()).success, true);
     role = 'user';
   }
+  const reportUrl = `http://127.0.0.1:${server.address().port}/api/admin/financial-ledger/users/${new mongoose.Types.ObjectId()}`;
+  assert.equal((await fetch(reportUrl)).status, 401);
+  assert.equal((await fetch(reportUrl, { headers: { authorization: `Bearer ${token}` } })).status, 403);
 });

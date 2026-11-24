@@ -6,14 +6,14 @@ import Wallet from '../models/Wallet.js';
 import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
-import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_FEE_PERCENTAGE, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
 import { isValidCountryCode } from '../utils/countries.js';
 import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
 import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
 import { getWithdrawalEligibility } from '../utils/withdrawalRules.js';
 import { DepositResolutionError, resolveDeposit } from '../services/depositResolution.js';
-import { getMonthlyProfitForecast } from '../utils/yieldRules.js';
+import { getMonthlyProfitForecast, getMonthlyPassiveReferralForecast } from '../utils/yieldRules.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -255,6 +255,10 @@ const getUserFinancialTotals = async (userIds, currentMonthStart, now) => {
         withdrawalApprovedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'APPROVED'] }] }, 1, 0] } },
         withdrawalCompletedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'COMPLETED'] }] }, 1, 0] } },
         withdrawalRejectedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'REJECTED'] }] }, 1, 0] } },
+        withdrawalPendingAmount: { $sum: { $cond: [
+          { $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'PENDING'] }] },
+          '$amount', 0,
+        ] } },
         totalDeposited: {
           $sum: {
             $cond: [
@@ -286,6 +290,30 @@ const getUserFinancialTotals = async (userIds, currentMonthStart, now) => {
             ],
           },
         },
+        totalDirectReferral: {
+          $sum: { $cond: [{ $eq: ['$type', 'REFERRAL_DIRECT_BONUS'] }, '$amount', 0] },
+        },
+        totalPassiveReferral: {
+          $sum: { $cond: [{ $eq: ['$type', 'REFERRAL_DAILY_PASSIVE'] }, '$amount', 0] },
+        },
+        ...(currentMonthStart ? {
+          currentMonthDirectReferral: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$type', 'REFERRAL_DIRECT_BONUS'] },
+              { $gte: ['$createdAt', currentMonthStart] },
+              { $lte: ['$createdAt', new Date(now)] },
+            ] },
+            '$amount', 0,
+          ] } },
+          currentMonthPassiveReferral: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$type', 'REFERRAL_DAILY_PASSIVE'] },
+              { $gte: ['$createdAt', currentMonthStart] },
+              { $lte: ['$createdAt', new Date(now)] },
+            ] },
+            '$amount', 0,
+          ] } },
+        } : {}),
         totalWithdrawn: {
           $sum: {
             $cond: [
@@ -541,7 +569,7 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
     }
 
     const user = await User.findOne({ _id: userId, role: 'user' })
-      .select('_id name email createdAt')
+      .select('_id name email createdAt referralCode emailVerified kycStatus firstDepositAt hasUsedGracePeriod')
       .lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
@@ -550,15 +578,18 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
     const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
     const pageSize = 100;
     const type = typeof req.query.type === 'string' ? req.query.type : '';
-    if (type && !['DEPOSIT', 'WITHDRAWAL_REQUEST'].includes(type)) {
+    if (type && !['DEPOSIT', 'WITHDRAWAL_REQUEST', 'DAILY_YIELD', 'REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE'].includes(type)) {
       return res.status(400).json({ success: false, error: 'Invalid transaction type.' });
     }
     const transactionFilter = { user: user._id, ...(type ? { type } : {}) };
-    const [wallet, totalsByUser, transactionCount, transactions] = await Promise.all([
+    const now = Date.now();
+    const today = new Date(now);
+    const currentMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    const [wallet, totalsByUser, transactionCount, transactions, referrals] = await Promise.all([
       Wallet.findOne({ user: user._id })
-        .select('mainBalance profitBalance referralBalance nextYieldAt yieldPaused')
+        .select('mainBalance profitBalance referralBalance unwithdrawnProfitCounter nextYieldAt yieldPaused')
         .lean(),
-      getUserFinancialTotals([user._id]),
+      getUserFinancialTotals([user._id], currentMonthStart, now),
       Transaction.countDocuments(transactionFilter),
       Transaction.find(transactionFilter)
         .select('type amount originalSubmittedAmount depositCorrectionReason depositCorrectedAt depositCorrectedBy netAmount feeDeducted status description txHash paymentMethod createdAt')
@@ -567,22 +598,77 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean(),
+      Referral.find({ referrer: user._id }).select('referredUser hasTriggeredInitialBonus isPassiveEligible lastPassivePayoutAt totalEarnedFromUser')
+        .populate('referredUser', 'name email').lean(),
     ]);
     const totals = totalsByUser.get(user._id.toString()) || {};
+    const referredIds = referrals.map((referral) => referral.referredUser?._id).filter(Boolean);
+    const referredWallets = referredIds.length
+      ? await Wallet.find({ user: { $in: referredIds } }).select('user mainBalance').lean()
+      : [];
+    const walletsByUser = new Map(referredWallets.map((entry) => [String(entry.user), entry]));
+    const members = referrals.map((referral) => {
+      const member = referral.referredUser;
+      const referredWallet = member && walletsByUser.get(String(member._id));
+      return {
+        name: member?.name || null,
+        email: member?.email || null,
+        mainBalance: referredWallet ? referredWallet.mainBalance : member ? 0 : null,
+        hasTriggeredInitialBonus: referral.hasTriggeredInitialBonus,
+        isPassiveEligible: referral.isPassiveEligible,
+        lastPassivePayoutAt: referral.lastPassivePayoutAt,
+        totalEarned: referral.totalEarnedFromUser,
+      };
+    });
+    const balancesValid = wallet && [wallet.mainBalance, wallet.profitBalance, wallet.referralBalance]
+      .every((balance) => Number.isFinite(balance) && balance >= 0);
+    const eligibility = wallet && getWithdrawalEligibility({
+      user, wallet, priorWithdrawalCount: totals.priorWithdrawalCount || 0,
+      permanentlyUnlocked: totals.qualifiedWithdrawalCount > 0, now,
+    });
+    let withdrawalEligibility = 'ELIGIBLE';
+    if (user.emailVerified === false) withdrawalEligibility = 'EMAIL_VERIFICATION_REQUIRED';
+    else if (user.kycStatus !== 'APPROVED') withdrawalEligibility = 'KYC_REQUIRED';
+    else if (!wallet) withdrawalEligibility = 'WALLET_MISSING';
+    else if (!balancesValid) withdrawalEligibility = 'BALANCE_UNAVAILABLE';
+    else if (!eligibility.canWithdraw) withdrawalEligibility = 'PROFIT_LOCKED';
+    const walletTotal = balancesValid ? wallet.mainBalance + wallet.profitBalance + wallet.referralBalance : null;
+    const requestableGross = balancesValid ? (withdrawalEligibility === 'ELIGIBLE' ? walletTotal : 0) : null;
+    const estimatedFee = requestableGross === null ? null : Number((requestableGross * WITHDRAWAL_FEE_PERCENTAGE).toFixed(2));
+    const investmentForecast = getMonthlyProfitForecast({
+      mainBalance: wallet?.mainBalance, profitBalance: wallet?.profitBalance, hasWallet: Boolean(wallet),
+      yieldPaused: wallet?.yieldPaused, nextYieldAt: wallet?.nextYieldAt,
+      credited: totals.currentMonthProfit || 0, now,
+    });
+    const referralForecast = getMonthlyPassiveReferralForecast({
+      referrals: members, credited: totals.currentMonthPassiveReferral || 0, now,
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        user,
+        user: { _id: user._id, name: user.name, email: user.email, createdAt: user.createdAt, referralCode: user.referralCode },
         summary: {
           totalDeposited: totals.totalDeposited || 0,
           totalProfit: totals.totalProfit || 0,
           totalReferralEarned: totals.totalReferralEarned || 0,
+          totalDirectReferral: totals.totalDirectReferral || 0,
+          totalPassiveReferral: totals.totalPassiveReferral || 0,
+          currentMonthDirectReferral: totals.currentMonthDirectReferral || 0,
           totalWithdrawn: totals.totalWithdrawn || 0,
           totalPaidOut: totals.totalPaidOut || 0,
           totalWithdrawalFees: totals.totalWithdrawalFees || 0,
+          withdrawalPendingAmount: totals.withdrawalPendingAmount || 0,
           depositCounts: getTransactionCounts(totals, 'deposit'),
           withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
+          hasWallet: Boolean(wallet),
+          balancesValid: Boolean(balancesValid),
+          withdrawal: {
+            eligibility: withdrawalEligibility,
+            requestableGross,
+            estimatedFee,
+            estimatedNet: requestableGross === null ? null : Number((requestableGross - estimatedFee).toFixed(2)),
+          },
           balances: {
             investment: wallet?.mainBalance || 0,
             profit: wallet?.profitBalance || 0,
@@ -598,6 +684,8 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
             nextProfitAt: wallet?.nextYieldAt || null,
           },
         },
+        referrals: { members, forecast: referralForecast },
+        investmentForecast,
         transactions,
         pagination: {
           page,

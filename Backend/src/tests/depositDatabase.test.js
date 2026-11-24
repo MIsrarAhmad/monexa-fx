@@ -95,6 +95,8 @@ test('deposit review is atomic and queue context reflects actual history', { ski
   await Transaction.create({ ...withdrawal, status: 'COMPLETED', createdAt: new Date('2024-01-01') });
   await Transaction.create({ ...withdrawal, status: 'REJECTED', createdAt: new Date('2024-01-02') });
   const pendingWithdrawal = await Transaction.create({ ...withdrawal, status: 'PENDING', createdAt: new Date('2024-01-03') });
+  await Transaction.create({ user: historyUser._id, type: 'REFERRAL_DIRECT_BONUS', amount: 50 });
+  await Transaction.create({ user: historyUser._id, type: 'REFERRAL_DAILY_PASSIVE', amount: 0.2 });
   const queue = response();
   await getPendingDeposits({}, queue, (error) => { throw error; });
   const entry = queue.body.data.find((item) => String(item._id) === String(pending._id));
@@ -113,6 +115,11 @@ test('deposit review is atomic and queue context reflects actual history', { ski
   await getAdminUserFinancialLedger({ params: { userId: String(historyUser._id) }, query: { type: 'WITHDRAWAL_REQUEST' } }, ledger, (error) => { throw error; });
   assert.equal(ledger.body.data.pagination.total, 3);
   assert.ok(ledger.body.data.transactions.every((item) => item.type === 'WITHDRAWAL_REQUEST'));
+  assert.equal(ledger.body.data.summary.totalDirectReferral, 50);
+  assert.equal(ledger.body.data.summary.totalPassiveReferral, 0.2);
+  assert.equal(ledger.body.data.summary.currentMonthDirectReferral, 50);
+  assert.equal(ledger.body.data.summary.withdrawalPendingAmount, 50);
+  assert.equal(ledger.body.data.referrals.forecast.current.credited, 0.2);
   const reviewedLedger = response();
   await getAdminUserFinancialLedger({ params: { userId: String(firstUser._id) }, query: { type: 'DEPOSIT' } }, reviewedLedger, (error) => { throw error; });
   assert.equal(reviewedLedger.body.data.transactions[0].originalSubmittedAmount, 3000);

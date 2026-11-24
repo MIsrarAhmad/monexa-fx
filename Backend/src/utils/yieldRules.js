@@ -1,4 +1,4 @@
-import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
+import { MINIMUM_INITIAL_DEPOSIT, REFERRAL_DAILY_PASSIVE_USD } from '../config/constants.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -72,5 +72,54 @@ export const getMonthlyProfitForecast = ({ mainBalance, profitBalance, hasWallet
     nextThreeTotal: status === 'AVAILABLE'
       ? Number(months.slice(1).reduce((sum, month) => sum + month.estimated, 0).toFixed(2))
       : null,
+  };
+};
+
+export const getMonthlyPassiveReferralForecast = ({ referrals, credited, now }) => {
+  const date = new Date(now);
+  const starts = Array.from({ length: 5 }, (_, index) => (
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + index, 1)
+  ));
+  const counts = [0, 0, 0, 0];
+  let status = 'AVAILABLE';
+  let eligibleCount = 0;
+  for (const referral of referrals) {
+    if (!referral.hasTriggeredInitialBonus) continue;
+    if (!Number.isFinite(referral.mainBalance) || referral.mainBalance < 0) {
+      status = 'BALANCE_UNAVAILABLE';
+      break;
+    }
+    if (referral.mainBalance < MINIMUM_INITIAL_DEPOSIT) continue;
+    eligibleCount++;
+    let next = now + DAY_IN_MS;
+    if (referral.isPassiveEligible && referral.lastPassivePayoutAt) {
+      const last = new Date(referral.lastPassivePayoutAt).getTime();
+      if (!Number.isFinite(last)) {
+        status = 'SCHEDULE_UNAVAILABLE';
+        break;
+      }
+      next = Math.max(now, last + DAY_IN_MS);
+    }
+    for (let due = next; due < starts[4]; due += DAY_IN_MS) {
+      const index = starts.findIndex((start, position) => position < 4 && due >= start && due < starts[position + 1]);
+      if (index >= 0) counts[index]++;
+    }
+  }
+  const amounts = counts.map((count) => Number((count * REFERRAL_DAILY_PASSIVE_USD).toFixed(2)));
+  const months = starts.slice(0, 4).map((start, index) => ({
+    month: new Date(start).toISOString().slice(0, 7),
+    estimated: status === 'AVAILABLE' ? amounts[index] : null,
+  }));
+  const creditedAmount = Number(credited.toFixed(2));
+  return {
+    status,
+    eligibleCount: status === 'AVAILABLE' ? eligibleCount : null,
+    current: {
+      month: months[0].month,
+      credited: creditedAmount,
+      estimatedTotal: months[0].estimated === null ? null : Number((creditedAmount + months[0].estimated).toFixed(2)),
+    },
+    nextMonths: months.slice(1),
+    nextThreeTotal: status === 'AVAILABLE' ? Number(amounts.slice(1).reduce((sum, amount) => sum + amount, 0).toFixed(2)) : null,
   };
 };
