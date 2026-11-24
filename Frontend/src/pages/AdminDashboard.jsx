@@ -39,6 +39,10 @@ import Toast from '../components/common/Toast';
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, PASSWORD_REQUIREMENTS } from '../utils/passwordPolicy';
 
 const formatUsdt = (amount) => `$${Number(amount || 0).toFixed(2)} USDT`;
+const formatDate = (date) => date ? new Date(date).toLocaleDateString() : 'Unavailable';
+const formatCounts = (counts) => counts
+  ? `${counts.completed} completed · ${counts.pending} pending · ${counts.rejected} rejected${counts.approved ? ` · ${counts.approved} approved` : ''}`
+  : 'Counts unavailable';
 const countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
 const countryName = (code) => code ? countryNames.of(code) || code : 'Unknown';
 const withdrawalEligibilityLabel = {
@@ -86,6 +90,8 @@ const AdminDashboard = () => {
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
   const [selectedLedgerUserId, setSelectedLedgerUserId] = useState('');
   const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerType, setLedgerType] = useState('');
+  const [depositEdits, setDepositEdits] = useState({});
   const [expandedReferralUserId, setExpandedReferralUserId] = useState('');
   const [clockNow, setClockNow] = useState(0);
 
@@ -159,10 +165,11 @@ const AdminDashboard = () => {
     isLoading: loadingSelectedLedger,
     isError: selectedLedgerError,
   } = useQuery({
-    queryKey: ['adminFinancialLedgerUser', selectedLedgerUserId, ledgerPage],
+    queryKey: ['adminFinancialLedgerUser', selectedLedgerUserId, ledgerPage, ledgerType],
     queryFn: async () => {
       const res = await axiosInstance.get(
-        `/admin/financial-ledger/users/${selectedLedgerUserId}?page=${ledgerPage}`
+        `/admin/financial-ledger/users/${selectedLedgerUserId}`,
+        { params: { page: ledgerPage, ...(ledgerType ? { type: ledgerType } : {}) } }
       );
       return res.data.data;
     },
@@ -190,7 +197,7 @@ const AdminDashboard = () => {
   }, [activeTab, selectedLedgerUserId]);
 
   // 2. Fetch pending withdrawals
-  const { data: pendingWithdrawals, isLoading: loadingWithdrawals } = useQuery({
+  const { data: pendingWithdrawals, isLoading: loadingWithdrawals, isError: withdrawalsError } = useQuery({
     queryKey: ['pendingWithdrawals'],
     queryFn: async () => {
       const res = await axiosInstance.get('/admin/withdrawals/pending');
@@ -199,7 +206,7 @@ const AdminDashboard = () => {
   });
 
   // 3. Fetch pending deposits
-  const { data: pendingDeposits, isLoading: loadingDeposits } = useQuery({
+  const { data: pendingDeposits, isLoading: loadingDeposits, isError: depositsError } = useQuery({
     queryKey: ['pendingDeposits'],
     queryFn: async () => {
       const res = await axiosInstance.get('/admin/deposits/pending');
@@ -227,6 +234,8 @@ const AdminDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['pendingWithdrawals'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['adminUserOverview'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFinancialLedgerUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFinancialLedgerUser'] });
       showToast(data.message);
       setProcessingId(null);
     },
@@ -238,17 +247,22 @@ const AdminDashboard = () => {
 
   // Deposit Action Mutation
   const depositActionMutation = useMutation({
-    mutationFn: async ({ id, action }) => {
+    mutationFn: async ({ id, action, correctedAmount, correctionReason }) => {
       setProcessingId(id);
-      const res = await axiosInstance.put(`/admin/deposits/${id}/action`, { action });
+      const res = await axiosInstance.put(`/admin/deposits/${id}/action`, {
+        action, ...(correctedAmount !== undefined ? { correctedAmount, correctionReason } : {}),
+      });
       return res.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pendingDeposits'] });
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       queryClient.invalidateQueries({ queryKey: ['adminUserOverview'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFinancialLedgerUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminFinancialLedgerUser'] });
       showToast(data.message);
       setProcessingId(null);
+      setDepositEdits({});
     },
     onError: (err) => {
       showToast(err.response?.data?.error || 'Failed to process deposit action');
@@ -577,13 +591,18 @@ const AdminDashboard = () => {
                             <td className="px-3 py-3">
                               <div className="font-semibold text-white">{ledgerUser.name}</div>
                               <div className="text-slate-400">{ledgerUser.email}</div>
+                              <div className="mt-1 text-[10px] text-slate-500">Joined {formatDate(ledgerUser.joinedAt)}</div>
                             </td>
-                            <td className="px-3 py-3 text-cyan-300">{formatUsdt(ledgerUser.totalDeposited)}</td>
+                            <td className="px-3 py-3 text-cyan-300">
+                              {formatUsdt(ledgerUser.totalDeposited)}
+                              <div className="mt-1 text-[10px] text-slate-500">{formatCounts(ledgerUser.depositCounts)}</div>
+                            </td>
                             <td className="px-3 py-3 text-emerald-300">{formatUsdt(ledgerUser.totalProfit)}</td>
                             <td className="px-3 py-3 text-amber-300">{formatUsdt(ledgerUser.totalReferralEarned)}</td>
                             <td className="px-3 py-3 text-rose-300">
                               {formatUsdt(ledgerUser.totalWithdrawn)}
                               <div className="text-[10px] text-slate-500">Net paid {formatUsdt(ledgerUser.totalPaidOut)}</div>
+                              <div className="mt-1 text-[10px] text-slate-500">{formatCounts(ledgerUser.withdrawalCounts)}</div>
                             </td>
                             <td className="px-3 py-3 text-white">
                               {formatUsdt(
@@ -598,6 +617,7 @@ const AdminDashboard = () => {
                                 onClick={() => {
                                   setSelectedLedgerUserId(ledgerUser.userId);
                                   setLedgerPage(1);
+                                  setLedgerType('');
                                   setClockNow(Date.now());
                                 }}
                                 className="rounded-lg border border-cyan-800 px-3 py-1.5 font-semibold text-cyan-300 hover:bg-cyan-950/60"
@@ -627,12 +647,13 @@ const AdminDashboard = () => {
                         <h3 className="text-base font-bold text-white">
                           {selectedLedger.user.name} — account breakdown
                         </h3>
-                        <p className="text-xs text-slate-400">{selectedLedger.user.email}</p>
+                        <p className="text-xs text-slate-400">{selectedLedger.user.email} · Joined {formatDate(selectedLedger.user.createdAt)}</p>
                       </div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="rounded-xl border border-cyan-900/50 bg-slate-900/60 p-4">
                           <p className="text-xs text-slate-400">Total completed deposits</p>
                           <p className="mt-1 font-bold text-cyan-300">{formatUsdt(selectedLedger.summary.totalDeposited)}</p>
+                          <p className="mt-1 text-[10px] text-slate-500">{formatCounts(selectedLedger.summary.depositCounts)}</p>
                         </div>
                         <div className="rounded-xl border border-emerald-900/50 bg-slate-900/60 p-4">
                           <p className="text-xs text-slate-400">Profit credited</p>
@@ -648,6 +669,7 @@ const AdminDashboard = () => {
                           <p className="mt-1 text-[10px] text-slate-500">
                             Net paid {formatUsdt(selectedLedger.summary.totalPaidOut)} · Fees {formatUsdt(selectedLedger.summary.totalWithdrawalFees)}
                           </p>
+                          <p className="mt-1 text-[10px] text-slate-500">{formatCounts(selectedLedger.summary.withdrawalCounts)}</p>
                         </div>
                       </div>
 
@@ -694,7 +716,17 @@ const AdminDashboard = () => {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="mb-3 text-sm font-bold text-white">Transaction history</h4>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <h4 className="text-sm font-bold text-white">Transaction history</h4>
+                          <label className="flex items-center gap-2 text-xs text-slate-400">
+                            Show
+                            <select value={ledgerType} onChange={(event) => { setLedgerType(event.target.value); setLedgerPage(1); }} className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-200">
+                              <option value="">All transactions</option>
+                              <option value="DEPOSIT">Deposits</option>
+                              <option value="WITHDRAWAL_REQUEST">Withdrawal requests</option>
+                            </select>
+                          </label>
+                        </div>
                         {selectedLedger.transactions.length === 0 ? (
                           <p className="py-6 text-center text-xs text-slate-500">No transactions recorded for this user.</p>
                         ) : (
@@ -716,10 +748,17 @@ const AdminDashboard = () => {
                                       {new Date(transaction.createdAt).toLocaleString()}
                                     </td>
                                     <td className="px-3 py-3 text-slate-200">{transaction.type.replace(/_/g, ' ')}</td>
-                                    <td className="px-3 py-3 font-semibold text-white">{formatUsdt(transaction.amount)}</td>
+                                    <td className="px-3 py-3 font-semibold text-white">
+                                      {formatUsdt(transaction.amount)}
+                                      {transaction.originalSubmittedAmount != null && (
+                                        <div className="mt-1 text-[10px] font-normal text-amber-300">Submitted {formatUsdt(transaction.originalSubmittedAmount)} · corrected</div>
+                                      )}
+                                    </td>
                                     <td className="px-3 py-3 text-slate-300">{transaction.status}</td>
                                     <td className="max-w-sm px-3 py-3 text-slate-400">
                                       {transaction.description || transaction.paymentMethod || '—'}
+                                      {transaction.depositCorrectionReason && <div className="mt-1 text-amber-300">Correction: {transaction.depositCorrectionReason}</div>}
+                                      {transaction.depositCorrectedAt && <div className="mt-1 text-[10px] text-slate-500">Reviewed {new Date(transaction.depositCorrectedAt).toLocaleString()} · {transaction.depositCorrectedBy?.name || 'Admin unavailable'}</div>}
                                     </td>
                                   </tr>
                                 ))}
@@ -1018,6 +1057,8 @@ const AdminDashboard = () => {
                       <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
                       <span>Loading pending deposit submissions...</span>
                     </div>
+                  ) : depositsError ? (
+                    <div role="alert" className="py-12 text-center text-rose-400">Could not load deposit requests.</div>
                   ) : !pendingDeposits || pendingDeposits.length === 0 ? (
                     <div className="py-12 text-center text-slate-500 text-xs">
                       No pending deposit proofs in the queue.
@@ -1026,17 +1067,35 @@ const AdminDashboard = () => {
                     <div className="space-y-4">
                       {pendingDeposits.map((d) => {
                         const isProcessingThis = processingId === d._id || depositActionMutation.isPending;
+                        const edit = depositEdits[d._id] || {};
+                        const amountText = edit.amount ?? String(d.amount);
+                        const amountValid = /^\d+(?:\.\d{1,2})?$/.test(amountText) && Number(amountText) > 0 && Number.isSafeInteger(Math.round(Number(amountText) * 100));
+                        const changed = amountValid && Number(amountText) !== d.amount;
+                        const reason = edit.reason || '';
+                        const canApprove = amountValid && (!changed || (reason.trim().length >= 10 && reason.trim().length <= 300));
                         return (
                           <div key={d._id} className="p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-xs space-y-3">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-3">
                               <div>
                                 <span className="font-bold text-white text-sm block">{d.user?.name}</span>
                                 <span className="text-slate-400">{d.user?.email}</span>
+                                <span className="mt-1 block text-[10px] text-slate-500">Joined {formatDate(d.user?.createdAt)}</span>
                               </div>
                               <div className="text-left sm:text-right">
                                 <span className="text-emerald-400 font-bold text-sm block">${d.amount} USDT</span>
                                 <span className="text-slate-400 text-[11px]">Via {d.paymentMethod || 'USDT'}</span>
                               </div>
+                            </div>
+
+                            <div className="rounded-xl border border-cyan-900/50 bg-cyan-950/20 px-4 py-3 text-slate-300">
+                              <p className="font-semibold text-cyan-200">Request context</p>
+                              {d.queueContext ? (
+                                <p className="mt-1">Deposit request #{d.queueContext.requestNumber} · Earlier requests: {d.queueContext.earlierCompleted} completed, {d.queueContext.earlierRejected} rejected.</p>
+                              ) : <p className="mt-1 text-slate-400">Request history unavailable.</p>}
+                              {d.principalAtSubmission != null ? (
+                                <p className="mt-1">Principal at submission: {formatUsdt(d.principalAtSubmission)} · Shortfall to $300: {formatUsdt(Math.max(0, 300 - d.principalAtSubmission))}.</p>
+                              ) : <p className="mt-1 text-slate-400">Principal at submission was not recorded for this request.</p>}
+                              <p className="mt-1 text-[10px] text-slate-500">Account context, not a reason supplied by the user.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1079,6 +1138,32 @@ const AdminDashboard = () => {
                               </div>
                             </div>
 
+                            {d.reviewCapabilities?.correctAmount && (
+                              <div className="rounded-xl border border-amber-900/50 bg-amber-950/10 p-4">
+                                <label htmlFor={`deposit-amount-${d._id}`} className="block font-semibold text-amber-200">Verified amount to credit (USDT)</label>
+                                <p className="mt-1 text-slate-400">Check the transfer proof before changing this amount. Submitted: {formatUsdt(d.amount)}.</p>
+                                <input
+                                  id={`deposit-amount-${d._id}`}
+                                  type="number" min="0.01" step="0.01" value={amountText}
+                                  onChange={(event) => setDepositEdits((current) => ({ ...current, [d._id]: { ...current[d._id], amount: event.target.value } }))}
+                                  className="mt-2 w-full max-w-xs rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+                                />
+                                {!amountValid && <p role="alert" className="mt-1 text-rose-300">Enter a positive amount with at most two decimal places.</p>}
+                                {changed && (
+                                  <div className="mt-3">
+                                    <label htmlFor={`deposit-reason-${d._id}`} className="block font-semibold text-slate-300">Correction reason (10–300 characters)</label>
+                                    <textarea
+                                      id={`deposit-reason-${d._id}`} maxLength={300} value={reason}
+                                      onChange={(event) => setDepositEdits((current) => ({ ...current, [d._id]: { ...current[d._id], reason: event.target.value } }))}
+                                      className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+                                      placeholder="Explain what the transfer proof shows"
+                                    />
+                                    {Number(amountText) < Number(d.minimumRequiredAtSubmission) && <p className="mt-1 text-amber-300">The verified amount is below the submission minimum; crediting it does not guarantee the $300 profit threshold is met.</p>}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
                               <button
                                 disabled={isProcessingThis}
@@ -1089,11 +1174,15 @@ const AdminDashboard = () => {
                               </button>
 
                               <button
-                                disabled={isProcessingThis}
-                                onClick={() => depositActionMutation.mutate({ id: d._id, action: 'APPROVE' })}
+                                disabled={isProcessingThis || !canApprove}
+                                onClick={() => {
+                                  const verified = Number(amountText);
+                                  if (!window.confirm(`Approve this deposit? Submitted: ${formatUsdt(d.amount)}. Credit: ${formatUsdt(verified)}.`)) return;
+                                  depositActionMutation.mutate({ id: d._id, action: 'APPROVE', ...(changed ? { correctedAmount: amountText, correctionReason: reason } : {}) });
+                                }}
                                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition text-xs disabled:opacity-40 shadow-lg shadow-emerald-950/50"
                               >
-                                <Check className="w-4 h-4" /> Approve & Credit ${d.amount} USDT
+                                <Check className="w-4 h-4" /> Approve & Credit {amountValid ? formatUsdt(Number(amountText)) : '—'}
                               </button>
                             </div>
                           </div>
@@ -1126,6 +1215,8 @@ const AdminDashboard = () => {
                           <tr>
                             <td colSpan={5} className="py-4 text-center text-slate-500">Loading pending requests...</td>
                           </tr>
+                        ) : withdrawalsError ? (
+                          <tr><td colSpan={5} role="alert" className="py-4 text-center text-rose-400">Could not load withdrawal requests.</td></tr>
                         ) : pendingWithdrawals?.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="py-4 text-center text-slate-500">No pending withdrawal requests.</td>
@@ -1136,7 +1227,11 @@ const AdminDashboard = () => {
                             const legacyDestination = w.description?.match(/Cashout request to (.+?) \(Net Payout:/)?.[1];
                             return (
                               <tr key={w._id}>
-                                <td className="py-3 px-3 font-semibold text-white">{w.user?.email}</td>
+                                <td className="py-3 px-3 font-semibold text-white">
+                                  {w.user?.email}
+                                  <div className="mt-1 font-normal text-[10px] text-slate-500">Joined {formatDate(w.user?.createdAt)}</div>
+                                  {w.queueContext && <div className="mt-1 font-normal text-[10px] text-slate-400">Request #{w.queueContext.requestNumber} · Earlier: {w.queueContext.earlierCompleted} completed, {w.queueContext.earlierRejected} rejected</div>}
+                                </td>
                                 <td className="py-3 px-3 font-bold text-slate-300">${w.amount} USDT</td>
                                 <td className="py-3 px-3 font-bold text-emerald-400">${w.netAmount} USDT</td>
                                 <td className="py-3 px-3 font-mono text-cyan-400 break-all">{w.receiverAddress || legacyDestination || 'Address unavailable'}</td>
@@ -1217,16 +1312,17 @@ const AdminDashboard = () => {
               </div>
 
               <p className="mb-4 text-xs leading-relaxed text-slate-400">
-                Deposits and referral earned are lifetime credited totals. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
+                Amounts are completed totals; counts distinguish completed, pending and rejected requests. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
               </p>
               <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
               <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
-                <table className="w-full min-w-[1200px] text-left border-collapse text-xs">
+                <table className="w-full min-w-[1400px] text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
                       <th className="py-3 px-3">Name & Email</th>
                       <th className="py-3 px-3">Country</th>
                       <th className="py-3 px-3">Completed deposits</th>
+                      <th className="py-3 px-3">Completed withdrawals</th>
                       <th className="py-3 px-3">Current principal</th>
                       <th className="py-3 px-3">Wallet balance</th>
                       <th className="py-3 px-3">Requestable gross</th>
@@ -1239,15 +1335,15 @@ const AdminDashboard = () => {
                   <tbody className="divide-y divide-slate-800/60">
                     {loadingUserOverview ? (
                       <tr>
-                        <td colSpan={10} className="py-4 text-center text-slate-500">
+                        <td colSpan={11} className="py-4 text-center text-slate-500">
                           Loading user directory...
                         </td>
                       </tr>
                     ) : userOverviewError ? (
-                      <tr><td colSpan={10} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
+                      <tr><td colSpan={11} role="alert" className="py-4 text-center text-rose-400">Could not load user financial overview.</td></tr>
                     ) : overviewUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-4 text-center text-slate-500">
+                        <td colSpan={11} className="py-4 text-center text-slate-500">
                           No users matched your search or filter criteria.
                         </td>
                       </tr>
@@ -1257,9 +1353,11 @@ const AdminDashboard = () => {
                           <td className="py-3 px-3">
                             <div className="font-bold text-white">{u.name}</div>
                             <div className="text-[11px] text-slate-400">{u.email}</div>
+                            <div className="mt-1 text-[10px] text-slate-500">Joined {formatDate(u.joinedAt)}</div>
                           </td>
                           <td className="py-3 px-3 text-slate-300">{countryName(u.country)}</td>
-                          <td className="py-3 px-3 text-cyan-300">{formatUsdt(u.totalDeposited)}</td>
+                          <td className="py-3 px-3 text-cyan-300">{formatUsdt(u.totalDeposited)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.depositCounts)}</div></td>
+                          <td className="py-3 px-3 text-rose-300">{formatUsdt(u.totalWithdrawn)}<div className="mt-1 text-[10px] text-slate-500">{formatCounts(u.withdrawalCounts)}</div></td>
                           <td className="py-3 px-3 font-bold text-cyan-400">{formatUsdt(u.mainBalance)}</td>
                           <td className="py-3 px-3 font-bold text-slate-200">{formatUsdt(u.walletTotal)}</td>
                           <td className="py-3 px-3 font-bold text-emerald-400">
@@ -1292,6 +1390,13 @@ const AdminDashboard = () => {
                             )}
                           </td>
                           <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedLedgerUserId(u.userId); setLedgerPage(1); setLedgerType(''); setClockNow(Date.now()); setActiveTab('ledger'); }}
+                              className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-cyan-800 px-2.5 py-1.5 text-cyan-300 hover:bg-cyan-950/60"
+                            >
+                              View history
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
