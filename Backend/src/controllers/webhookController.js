@@ -1,13 +1,8 @@
 // src/controllers/webhookController.js
-import Wallet from '../models/Wallet.js';
-import User from '../models/User.js';
-import Transaction from '../models/Transaction.js';
 import { generateBinanceSignature } from '../config/binance.js';
 import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
-import { MINIMUM_INITIAL_DEPOSIT } from '../config/constants.js';
 import { notifyUser } from '../services/notificationService.js';
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
+import { DepositResolutionError, resolveDeposit } from '../services/depositResolution.js';
 
 // @desc    Receive instant payment notification from Binance Pay Webhook
 // @route   POST /api/webhooks/binance
@@ -34,39 +29,16 @@ export const handleBinanceWebhook = async (req, res) => {
     if (payload.bizStatus === 'PAY_SUCCESS') {
       const data = JSON.parse(payload.data);
       const merchantTradeNo = data.merchantTradeNo;
-      const depositAmount = parseFloat(data.orderAmount);
-
-      const transaction = await Transaction.findOne({ merchantTradeNo });
-
-      if (!transaction) {
-        return res.status(404).json({ returnCode: 'FAIL', returnMessage: 'Transaction record not found' });
+      if (typeof merchantTradeNo !== 'string' || !merchantTradeNo.trim()) {
+        return res.status(400).json({ returnCode: 'FAIL', returnMessage: 'Missing merchant trade number' });
       }
-
-      if (transaction.status === 'APPROVED' || transaction.status === 'COMPLETED') {
-        return res.status(200).json({ returnCode: 'SUCCESS', returnMessage: 'Already processed' });
+      if (data.orderAmount === undefined || data.orderAmount === null) {
+        return res.status(400).json({ returnCode: 'FAIL', returnMessage: 'Missing payment amount' });
       }
-
-      // Update Transaction status
-      transaction.status = 'COMPLETED';
-      transaction.amount = depositAmount;
-      await transaction.save();
-
-      // Update User Wallet main balance
-      const wallet = await Wallet.findOne({ user: transaction.user });
-      const user = await User.findById(transaction.user);
-
-      const previousBalance = wallet.mainBalance;
-      wallet.mainBalance += depositAmount;
-
-      // Start a fresh activation period when the main balance reaches $300.
-      if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
-        const approvedAt = new Date();
-        user.firstDepositAt = approvedAt;
-        await user.save();
-        wallet.yieldPaused = false;
-        wallet.nextYieldAt = new Date(approvedAt.getTime() + DAY_IN_MS);
-      }
-      await wallet.save();
+      const { transaction, user } = await resolveDeposit({
+        merchantTradeNo, action: 'APPROVE', gatewayAmount: data.orderAmount,
+      });
+      const depositAmount = transaction.amount;
 
       void sendResolutionTransactionEmail(transaction, 'completed', user);
       await notifyUser({
@@ -77,12 +49,22 @@ export const handleBinanceWebhook = async (req, res) => {
         url: '/transactions',
       });
 
-      console.log(`Deposit Webhook Processed: User ${user.email} credited +$${depositAmount} USDT`);
+      console.log(`Deposit Webhook Processed: Transaction ${transaction._id} credited +$${depositAmount} USDT`);
       return res.status(200).json({ returnCode: 'SUCCESS', returnMessage: 'Payment Processed' });
     }
 
     return res.status(200).json({ returnCode: 'SUCCESS', returnMessage: 'Event Received' });
   } catch (error) {
+    if (error instanceof DepositResolutionError) {
+      if (error.status === 409) {
+        if (error.depositStatus === 'REJECTED') {
+          console.error('Binance payment received for a rejected deposit; manual reconciliation is required.');
+          return res.status(409).json({ returnCode: 'FAIL', returnMessage: 'Deposit rejected; manual reconciliation required' });
+        }
+        return res.status(200).json({ returnCode: 'SUCCESS', returnMessage: 'Already processed' });
+      }
+      return res.status(error.status).json({ returnCode: 'FAIL', returnMessage: error.message });
+    }
     console.error('Binance Webhook Processing Failure:', error.message);
     return res.status(500).json({ returnCode: 'FAIL', returnMessage: error.message });
   }

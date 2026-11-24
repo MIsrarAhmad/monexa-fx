@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import nodemailer from 'nodemailer';
+import mongoose from 'mongoose';
 import Transaction from '../models/Transaction.js';
 import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
@@ -14,6 +15,11 @@ import { generateBinanceSignature } from '../config/binance.js';
 import { transactionEmailTemplate } from '../utils/transactionEmailTemplates.js';
 
 const user = { _id: 'user-id', name: 'Jane <Doe>', email: 'jane@example.com', kycStatus: 'APPROVED', save: async () => {} };
+const query = (value) => {
+  const result = Promise.resolve(value);
+  result.session = () => result;
+  return result;
+};
 const address = 'TQfojQp5kTeUm6dKWtn12SF2ZzToauLSX4';
 const response = () => ({
   statusCode: 200,
@@ -44,7 +50,10 @@ const setup = (t, { fail = false, delay } = {}) => {
       return { messageId: 'message-id' };
     },
   }));
-  t.mock.method(User, 'findById', async () => ({ ...user }));
+  t.mock.method(mongoose, 'startSession', async () => ({
+    withTransaction: async (callback) => callback(), endSession: async () => {},
+  }));
+  t.mock.method(User, 'findById', () => query({ ...user }));
   t.mock.method(Notification, 'create', async () => ({ _id: 'notification-id' }));
   t.mock.method(PushSubscription, 'find', async () => []);
   const attempts = new Set();
@@ -87,7 +96,7 @@ test('successful requests email the persisted transaction and actual withdrawal 
     mainBalance: 500, profitBalance: 100, referralBalance: 0, unwithdrawnProfitCounter: 100,
     save: async () => {},
   };
-  t.mock.method(Wallet, 'findOne', async () => wallet);
+  t.mock.method(Wallet, 'findOne', () => query(wallet));
   t.mock.method(Transaction, 'findOne', async () => null);
   t.mock.method(Transaction, 'countDocuments', async () => 0);
   t.mock.method(Transaction, 'create', async (data) => ({ ...data, _id: 'tx-id' }));
@@ -108,7 +117,7 @@ test('email delivery failure is explicitly logged without failing a persisted re
   setup(t, { fail: true });
   const errors = t.mock.method(console, 'error', () => {});
   t.mock.method(Transaction, 'findOne', async () => null);
-  t.mock.method(Wallet, 'findOne', async () => ({ mainBalance: 500 }));
+  t.mock.method(Wallet, 'findOne', () => query({ mainBalance: 500 }));
   t.mock.method(Transaction, 'create', async (data) => ({ ...data, _id: 'tx-id' }));
   const res = await invoke(submitManualDeposit, { amount: 300, txHash: 'hash', paymentMethod: 'TRC20' }, { file: { path: 'proof' } });
   assert.equal(res.statusCode, 201);
@@ -124,11 +133,11 @@ test('slow SMTP never delays request or resolution responses and later failures 
   const wallet = {
     mainBalance: 500, profitBalance: 100, referralBalance: 0, unwithdrawnProfitCounter: 100, save: async () => {},
   };
-  t.mock.method(Wallet, 'findOne', async () => wallet);
+  t.mock.method(Wallet, 'findOne', () => query(wallet));
   t.mock.method(Transaction, 'findOne', async () => null);
   t.mock.method(Transaction, 'countDocuments', async () => 0);
   t.mock.method(Transaction, 'create', async (data) => ({ ...data, _id: data.type }));
-  t.mock.method(Transaction, 'findById', async () => ({
+  t.mock.method(Transaction, 'findById', () => query({
     _id: 'admin-tx', user: 'user-id', type: 'DEPOSIT', amount: 300, status: 'PENDING', save: async () => {},
   }));
   let timer;
@@ -156,7 +165,7 @@ test('slow SMTP never delays request or resolution responses and later failures 
 test('withdrawal rejection restores reserved balances and emails only after resolution', async (t) => {
   const messages = setup(t);
   const wallet = { mainBalance: 400, profitBalance: 10, referralBalance: 5, save: async () => {} };
-  t.mock.method(Wallet, 'findOne', async () => wallet);
+  t.mock.method(Wallet, 'findOne', () => query(wallet));
   const transaction = {
     _id: 'tx-id', user: 'user-id', type: 'WITHDRAWAL_REQUEST', status: 'PENDING',
     amount: 100, feeDeducted: 20, netAmount: 80, receiverAddress: address,
@@ -175,7 +184,7 @@ test('withdrawal rejection restores reserved balances and emails only after reso
 test('withdrawal approval communicates the admin status without claiming transfer confirmation', async (t) => {
   const messages = setup(t);
   const wallet = { save: async () => {} };
-  t.mock.method(Wallet, 'findOne', async () => wallet);
+  t.mock.method(Wallet, 'findOne', () => query(wallet));
   t.mock.method(Transaction, 'findById', async () => ({
     _id: 'tx-id', user: 'user-id', type: 'WITHDRAWAL_REQUEST', status: 'PENDING',
     amount: 100, feeDeducted: 20, netAmount: 80, save: async () => {},
@@ -189,8 +198,8 @@ test('withdrawal approval communicates the admin status without claiming transfe
 test('deposit rejection emails the resolved status', async (t) => {
   const messages = setup(t);
   const wallet = { mainBalance: 500, save: async () => {} };
-  t.mock.method(Wallet, 'findOne', async () => wallet);
-  t.mock.method(Transaction, 'findById', async () => ({
+  t.mock.method(Wallet, 'findOne', () => query(wallet));
+  t.mock.method(Transaction, 'findById', () => query({
     _id: 'tx-id', user: 'user-id', type: 'DEPOSIT', status: 'PENDING',
     amount: 300, save: async () => {},
   }));
@@ -214,9 +223,9 @@ for (const first of ['admin', 'webhook']) {
       amount: 300, merchantTradeNo: 'binance-id', save: async () => {},
     };
     const wallet = { mainBalance: 500, save: async () => {} };
-    t.mock.method(Transaction, 'findById', async () => transaction);
-    t.mock.method(Transaction, 'findOne', async () => transaction);
-    t.mock.method(Wallet, 'findOne', async () => wallet);
+    t.mock.method(Transaction, 'findById', () => query(transaction));
+    t.mock.method(Transaction, 'findOne', () => query(transaction));
+    t.mock.method(Wallet, 'findOne', () => query(wallet));
     const admin = () => invoke(processDepositAction, { action: 'APPROVE' });
     const webhook = async () => {
       const body = { bizStatus: 'PAY_SUCCESS', data: JSON.stringify({ merchantTradeNo: 'binance-id', orderAmount: '300' }) };
@@ -244,6 +253,29 @@ for (const first of ['admin', 'webhook']) {
   });
 }
 
+test('a payment webhook for a rejected deposit reports reconciliation instead of silently succeeding', async (t) => {
+  setup(t);
+  const originalSecret = process.env.BINANCE_PAY_SECRET_KEY;
+  process.env.BINANCE_PAY_SECRET_KEY = 'test-secret';
+  t.after(() => {
+    if (originalSecret === undefined) delete process.env.BINANCE_PAY_SECRET_KEY;
+    else process.env.BINANCE_PAY_SECRET_KEY = originalSecret;
+  });
+  t.mock.method(Transaction, 'findOne', () => query({
+    _id: 'tx-id', user: 'user-id', type: 'DEPOSIT', status: 'REJECTED', amount: 300,
+  }));
+  const errors = t.mock.method(console, 'error', () => {});
+  const body = { bizStatus: 'PAY_SUCCESS', data: JSON.stringify({ merchantTradeNo: 'binance-id', orderAmount: '300' }) };
+  const signature = generateBinanceSignature('123', 'nonce', JSON.stringify(body), 'test-secret');
+  const res = response();
+  await handleBinanceWebhook({ body, headers: {
+    'binancepay-timestamp': '123', 'binancepay-nonce': 'nonce', 'binancepay-signature': signature,
+  } }, res);
+  assert.equal(res.statusCode, 409);
+  assert.match(res.body.returnMessage, /reconciliation/);
+  assert.ok(errors.mock.calls.some((call) => String(call.arguments[0]).includes('reconciliation')));
+});
+
 test('concurrent admin resolutions attempt only one email without gating resolution', async (t) => {
   const messages = setup(t);
   const wallet = { mainBalance: 400, profitBalance: 0, referralBalance: 0, save: async () => {} };
@@ -270,10 +302,10 @@ test('concurrent admin resolutions attempt only one email without gating resolut
 test('transient resolution failure does not block a later retry or send an early email', async (t) => {
   const messages = setup(t);
   let fails = true;
-  t.mock.method(Wallet, 'findOne', async () => ({
+  t.mock.method(Wallet, 'findOne', () => query({
     mainBalance: 500, save: async () => { if (fails) throw new Error('write failed'); },
   }));
-  t.mock.method(Transaction, 'findById', async () => ({
+  t.mock.method(Transaction, 'findById', () => query({
     _id: 'tx-id', user: 'user-id', type: 'DEPOSIT', amount: 300, status: 'PENDING', save: async () => {},
   }));
   await assert.rejects(invoke(processDepositAction, { action: 'APPROVE' }), /write failed/);
@@ -289,8 +321,8 @@ test('email deduplication database failure is logged without failing resolution'
   const messages = setup(t);
   const errors = t.mock.method(console, 'error', () => {});
   Transaction.updateOne.mock.mockImplementation(async () => { throw new Error('write failed'); });
-  t.mock.method(Wallet, 'findOne', async () => ({ mainBalance: 500, save: async () => {} }));
-  t.mock.method(Transaction, 'findById', async () => ({
+  t.mock.method(Wallet, 'findOne', () => query({ mainBalance: 500, save: async () => {} }));
+  t.mock.method(Transaction, 'findById', () => query({
     _id: 'tx-id', user: 'user-id', type: 'DEPOSIT', amount: 300, status: 'PENDING', save: async () => {},
   }));
   const result = await invoke(processDepositAction, { action: 'APPROVE' });

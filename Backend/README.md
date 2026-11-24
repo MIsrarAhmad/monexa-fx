@@ -41,6 +41,28 @@ administrator's status and does not independently confirm an on-chain transfer.
 Transaction emails are best-effort: delivery failures are logged and do not
 roll back transactions, and there is no automatic delivery retry queue.
 
+Admin user overviews and financial ledgers distinguish pending, approved,
+completed, and rejected deposit and withdrawal-request counts. The queue's
+request number includes all earlier requests of that type, regardless of their
+current status; it is context, not a reason given by the user. Deposit
+principal at submission is recorded for new manual requests only.
+
+Admins can correct a pending manual TRC20 deposit with an uploaded proof by
+supplying `correctedAmount` and `correctionReason` (10–300 characters) when
+approving. The verified amount must be positive with at most two decimals.
+The transaction retains the submitted amount, reason, reviewer, and review time.
+A corrected amount may be below the submission minimum because it represents
+funds actually received; the $300 principal threshold for starting profit
+still applies. Uncorrected approvals retain their existing minimum rule.
+Deposit approvals, rejections, and Binance webhook credits use MongoDB
+transactions to prevent duplicate or partial credits. MongoDB must support
+multi-document transactions (replica set or sharded cluster); standalone
+servers cannot resolve deposits. Deploy the backend before enabling the
+correction controls in the frontend. The optional
+`src/tests/depositDatabase.test.js` integration test requires
+`MONEXA_TEST_MONGO_URI` pointing to a local replica set and database named
+`monexa_admin_test`; without it, that test is skipped.
+
 For withdrawals submitted under the current policy, an approved request of at
 least $50 made when the $50 unwithdrawn profit and referral target is met
 permanently removes that target for later requests. Pending and rejected

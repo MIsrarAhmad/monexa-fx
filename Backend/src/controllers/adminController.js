@@ -8,11 +8,11 @@ import User from '../models/User.js';
 import SystemSettings from '../models/SystemSettings.js';
 import { MINIMUM_INITIAL_DEPOSIT, WITHDRAWAL_LOCK_PROFIT_TARGET } from '../config/constants.js';
 import { generateRefCode } from '../utils/generateRefCode.js';
-import { getMinimumDepositForBalance } from '../utils/depositRules.js';
 import { isValidCountryCode } from '../utils/countries.js';
 import { notifyUser, publishAnnouncement } from '../services/notificationService.js';
 import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
 import { getWithdrawalEligibility } from '../utils/withdrawalRules.js';
+import { DepositResolutionError, resolveDeposit } from '../services/depositResolution.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -236,16 +236,24 @@ const getUserFinancialTotals = async (userIds) => {
       $match: {
         user: { $in: userIds },
         $or: [
-          { type: 'DEPOSIT', status: 'COMPLETED' },
+          { type: 'DEPOSIT' },
           { type: 'DAILY_YIELD' },
           { type: { $in: ['REFERRAL_DIRECT_BONUS', 'REFERRAL_DAILY_PASSIVE'] } },
-          { type: 'WITHDRAWAL_REQUEST', status: { $in: ['PENDING', 'COMPLETED'] } },
+          { type: 'WITHDRAWAL_REQUEST' },
         ],
       },
     },
     {
       $group: {
         _id: '$user',
+        depositPendingCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'DEPOSIT'] }, { $eq: ['$status', 'PENDING'] }] }, 1, 0] } },
+        depositApprovedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'DEPOSIT'] }, { $eq: ['$status', 'APPROVED'] }] }, 1, 0] } },
+        depositCompletedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'DEPOSIT'] }, { $eq: ['$status', 'COMPLETED'] }] }, 1, 0] } },
+        depositRejectedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'DEPOSIT'] }, { $eq: ['$status', 'REJECTED'] }] }, 1, 0] } },
+        withdrawalPendingCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'PENDING'] }] }, 1, 0] } },
+        withdrawalApprovedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'APPROVED'] }] }, 1, 0] } },
+        withdrawalCompletedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'COMPLETED'] }] }, 1, 0] } },
+        withdrawalRejectedCount: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'WITHDRAWAL_REQUEST'] }, { $eq: ['$status', 'REJECTED'] }] }, 1, 0] } },
         totalDeposited: {
           $sum: {
             $cond: [
@@ -337,6 +345,13 @@ const getUserFinancialTotals = async (userIds) => {
   return new Map(totals.map((entry) => [entry._id.toString(), entry]));
 };
 
+const getTransactionCounts = (totals, prefix) => ({
+  pending: totals[`${prefix}PendingCount`] || 0,
+  approved: totals[`${prefix}ApprovedCount`] || 0,
+  completed: totals[`${prefix}CompletedCount`] || 0,
+  rejected: totals[`${prefix}RejectedCount`] || 0,
+});
+
 // @route GET /api/admin/user-overview
 // @access Private/Admin
 export const getAdminUserOverview = async (req, res, next) => {
@@ -381,7 +396,7 @@ export const getAdminUserOverview = async (req, res, next) => {
         users: [
           { $skip: (page - 1) * pageSize },
           { $limit: pageSize },
-          { $project: { _id: 1, name: 1, email: 1, country: 1, emailVerified: 1, mainBalance: 1, profitBalance: 1, referralBalance: 1, status: 1, kycStatus: 1, firstDepositAt: 1, hasUsedGracePeriod: 1, unwithdrawnProfitCounter: 1, hasWallet: 1 } },
+          { $project: { _id: 1, name: 1, email: 1, country: 1, createdAt: 1, emailVerified: 1, mainBalance: 1, profitBalance: 1, referralBalance: 1, status: 1, kycStatus: 1, firstDepositAt: 1, hasUsedGracePeriod: 1, unwithdrawnProfitCounter: 1, hasWallet: 1 } },
         ],
       } },
     ];
@@ -410,7 +425,11 @@ export const getAdminUserOverview = async (req, res, next) => {
             name: user.name,
             email: user.email,
             country: isValidCountryCode(user.country) ? user.country : null,
+            joinedAt: user.createdAt || null,
             totalDeposited: totals.totalDeposited || 0,
+            totalWithdrawn: totals.totalWithdrawn || 0,
+            depositCounts: getTransactionCounts(totals, 'deposit'),
+            withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
             totalReferralEarned: totals.totalReferralEarned || 0,
             mainBalance: user.mainBalance,
             walletTotal,
@@ -477,6 +496,8 @@ export const getAdminFinancialLedgerUsers = async (req, res, next) => {
           totalWithdrawn: totals.totalWithdrawn || 0,
           totalPaidOut: totals.totalPaidOut || 0,
           totalWithdrawalFees: totals.totalWithdrawalFees || 0,
+          depositCounts: getTransactionCounts(totals, 'deposit'),
+          withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
           balances: {
             investment: wallet?.mainBalance || 0,
             profit: wallet?.profitBalance || 0,
@@ -508,15 +529,21 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
 
     const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
     const pageSize = 100;
+    const type = typeof req.query.type === 'string' ? req.query.type : '';
+    if (type && !['DEPOSIT', 'WITHDRAWAL_REQUEST'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Invalid transaction type.' });
+    }
+    const transactionFilter = { user: user._id, ...(type ? { type } : {}) };
     const [wallet, totalsByUser, transactionCount, transactions] = await Promise.all([
       Wallet.findOne({ user: user._id })
         .select('mainBalance profitBalance referralBalance nextYieldAt yieldPaused')
         .lean(),
       getUserFinancialTotals([user._id]),
-      Transaction.countDocuments({ user: user._id }),
-      Transaction.find({ user: user._id })
-        .select('type amount netAmount feeDeducted status description txHash paymentMethod createdAt')
-        .sort({ createdAt: -1 })
+      Transaction.countDocuments(transactionFilter),
+      Transaction.find(transactionFilter)
+        .select('type amount originalSubmittedAmount depositCorrectionReason depositCorrectedAt depositCorrectedBy netAmount feeDeducted status description txHash paymentMethod createdAt')
+        .populate('depositCorrectedBy', 'name email')
+        .sort({ createdAt: -1, _id: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean(),
@@ -534,6 +561,8 @@ export const getAdminUserFinancialLedger = async (req, res, next) => {
           totalWithdrawn: totals.totalWithdrawn || 0,
           totalPaidOut: totals.totalPaidOut || 0,
           totalWithdrawalFees: totals.totalWithdrawalFees || 0,
+          depositCounts: getTransactionCounts(totals, 'deposit'),
+          withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
           balances: {
             investment: wallet?.mainBalance || 0,
             profit: wallet?.profitBalance || 0,
@@ -715,18 +744,67 @@ export const permanentlyDeleteUser = async (req, res, next) => {
 // DEPOSIT APPROVAL QUEUE (ADMIN)
 // ==========================================
 
+const addQueueContext = async (transactions) => {
+  if (!transactions.length) return [];
+  const contexts = await Transaction.aggregate([
+    { $match: { _id: { $in: transactions.map((transaction) => transaction._id) } } },
+    { $lookup: {
+      from: Transaction.collection.name,
+      let: { user: '$user', type: '$type', created: '$createdAt', id: '$_id' },
+      pipeline: [
+        { $match: { $expr: { $and: [
+          { $eq: ['$user', '$$user'] },
+          { $eq: ['$type', '$$type'] },
+          { $or: [
+            { $lt: ['$createdAt', '$$created'] },
+            { $and: [{ $eq: ['$createdAt', '$$created'] }, { $lt: ['$_id', '$$id'] }] },
+          ] },
+        ] } } },
+        { $group: {
+          _id: null,
+          earlierRequests: { $sum: 1 },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'COMPLETED'] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'REJECTED'] }, 1, 0] } },
+        } },
+      ],
+      as: 'history',
+    } },
+    { $project: { history: { $arrayElemAt: ['$history', 0] } } },
+  ]);
+  const byId = new Map(contexts.map((entry) => [String(entry._id), entry.history]));
+  return transactions.map((transaction) => {
+    const history = byId.get(String(transaction._id));
+    if (!byId.has(String(transaction._id))) {
+      throw new Error(`Queue context unavailable for transaction ${transaction._id}`);
+    }
+    return {
+      ...transaction.toObject(),
+      queueContext: {
+        requestNumber: (history?.earlierRequests || 0) + 1,
+        earlierCompleted: history?.completed || 0,
+        earlierRejected: history?.rejected || 0,
+      },
+      reviewCapabilities: {
+        correctAmount: transaction.type === 'DEPOSIT'
+          && !transaction.merchantTradeNo && transaction.paymentMethod === 'TRC20'
+          && Boolean(transaction.paymentProofUrl),
+      },
+    };
+  });
+};
+
 // @desc    Get list of pending deposit proofs
 // @route   GET /api/admin/deposits/pending
 // @access  Private/Admin
 export const getPendingDeposits = async (req, res, next) => {
   try {
     const pendingDeposits = await Transaction.find({ type: 'DEPOSIT', status: 'PENDING' })
-      .populate('user', 'name email kycStatus')
+      .populate('user', 'name email kycStatus createdAt')
       .sort('-createdAt');
 
     res.status(200).json({
       success: true,
-      data: pendingDeposits,
+      data: await addQueueContext(pendingDeposits),
     });
   } catch (error) {
     next(error);
@@ -738,25 +816,17 @@ export const getPendingDeposits = async (req, res, next) => {
 // @access  Private/Admin
 export const processDepositAction = async (req, res, next) => {
   try {
-    const { action } = req.body;
+    const { action, correctedAmount, correctionReason } = req.body;
     const transactionId = req.params.id;
 
     if (!['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ success: false, error: "Action must be 'APPROVE' or 'REJECT'" });
     }
 
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction || transaction.type !== 'DEPOSIT') {
-      return res.status(404).json({ success: false, error: 'Pending deposit transaction not found' });
-    }
-
-    if (transaction.status !== 'PENDING') {
-      return res.status(400).json({ success: false, error: `Deposit already ${transaction.status.toLowerCase()}` });
-    }
-
+    const { transaction, user, updatedMainBalance } = await resolveDeposit({
+      transactionId, action, correctedAmount, correctionReason, reviewerId: req.user._id,
+    });
     if (action === 'REJECT') {
-      transaction.status = 'REJECTED';
-      await transaction.save();
       void sendResolutionTransactionEmail(transaction, 'rejected');
       await notifyUser({
         userId: transaction.user,
@@ -772,40 +842,7 @@ export const processDepositAction = async (req, res, next) => {
       });
     }
 
-    // Action === 'APPROVE'
     const depositAmount = transaction.amount;
-    const wallet = await Wallet.findOne({ user: transaction.user });
-    const user = await User.findById(transaction.user);
-
-    if (!wallet) {
-      return res.status(404).json({ success: false, error: 'User wallet record not found' });
-    }
-
-    const minimumDeposit = transaction.minimumRequiredAtSubmission
-      ?? getMinimumDepositForBalance(wallet.mainBalance);
-    if (depositAmount < minimumDeposit) {
-      return res.status(400).json({
-        success: false,
-        error: `This deposit is below the required minimum of $${minimumDeposit.toFixed(2)} USDT.`,
-      });
-    }
-
-    const previousBalance = wallet.mainBalance;
-    wallet.mainBalance += depositAmount;
-
-    if (previousBalance < MINIMUM_INITIAL_DEPOSIT && wallet.mainBalance >= MINIMUM_INITIAL_DEPOSIT) {
-      const approvedAt = new Date();
-      if (user) {
-        user.firstDepositAt = approvedAt;
-        await user.save();
-      }
-      wallet.yieldPaused = false;
-      wallet.nextYieldAt = new Date(approvedAt.getTime() + DAY_IN_MS);
-    }
-    await wallet.save();
-
-    transaction.status = 'COMPLETED';
-    await transaction.save();
     void sendResolutionTransactionEmail(transaction, 'completed', user);
     await notifyUser({
       userId: transaction.user,
@@ -820,10 +857,13 @@ export const processDepositAction = async (req, res, next) => {
       message: `Deposit approved. Credited $${depositAmount} USDT to user main balance.`,
       data: {
         transaction,
-        updatedMainBalance: wallet.mainBalance,
+        updatedMainBalance,
       },
     });
   } catch (error) {
+    if (error instanceof DepositResolutionError) {
+      return res.status(error.status === 409 ? 400 : error.status).json({ success: false, error: error.message });
+    }
     next(error);
   }
 };
@@ -838,12 +878,12 @@ export const processDepositAction = async (req, res, next) => {
 export const getPendingWithdrawals = async (req, res, next) => {
   try {
     const pendingWithdrawals = await Transaction.find({ type: 'WITHDRAWAL_REQUEST', status: 'PENDING' })
-      .populate('user', 'name email kycStatus')
+      .populate('user', 'name email kycStatus createdAt')
       .sort('-createdAt');
 
     res.status(200).json({
       success: true,
-      data: pendingWithdrawals,
+      data: await addQueueContext(pendingWithdrawals),
     });
   } catch (error) {
     next(error);

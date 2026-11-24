@@ -25,20 +25,24 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
   const aggregate = t.mock.method(User, 'aggregate', async () => [{
     count: [{ total: 26 }],
     users: [{
-      _id: id, name: 'Jane', email: 'jane@example.com', country: 'GB',
+      _id: id, name: 'Jane', email: 'jane@example.com', country: 'GB', createdAt: new Date('2024-01-01'),
       mainBalance: 125, profitBalance: 20, referralBalance: 5, status: 'BELOW_THRESHOLD',
       kycStatus: 'APPROVED', hasWallet: true, unwithdrawnProfitCounter: 50,
       password: 'secret', kycDetails: { documentNumber: 'private' },
     }],
   }]);
   const transactions = t.mock.method(Transaction, 'aggregate', async () => [{
-    _id: id, totalDeposited: 500, totalReferralEarned: 75,
+    _id: id, totalDeposited: 500, totalWithdrawn: 120, totalReferralEarned: 75,
+    depositCompletedCount: 2, depositPendingCount: 1, withdrawalCompletedCount: 1, withdrawalRejectedCount: 2,
   }]);
 
   const data = await invoke(getAdminUserOverview, { page: '2', search: 'Jane.*', status: 'BELOW_THRESHOLD' });
   assert.deepEqual(data.users, [{
     userId: id, name: 'Jane', email: 'jane@example.com', country: 'GB',
-    totalDeposited: 500, totalReferralEarned: 75, mainBalance: 125,
+    joinedAt: new Date('2024-01-01'), totalDeposited: 500, totalWithdrawn: 120,
+    depositCounts: { pending: 1, approved: 0, completed: 2, rejected: 0 },
+    withdrawalCounts: { pending: 0, approved: 0, completed: 1, rejected: 2 },
+    totalReferralEarned: 75, mainBalance: 125,
     walletTotal: 150, requestableGross: 150, withdrawalEligibility: 'ELIGIBLE',
     status: 'BELOW_THRESHOLD', remainingToMinThreshold: 175,
   }]);
@@ -53,9 +57,8 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
   assert.deepEqual(statusSwitch.branches[1].case, { $gt: ['$mainBalance', 0] });
   const match = transactions.mock.calls[0].arguments[0][0].$match;
   assert.deepEqual(match.user.$in, [id]);
-  assert.ok(match.$or.some((entry) => entry.type === 'DEPOSIT' && entry.status === 'COMPLETED'));
-  assert.ok(match.$or.some((entry) => entry.type === 'WITHDRAWAL_REQUEST'
-    && entry.status.$in.join(',') === 'PENDING,COMPLETED'));
+  assert.ok(match.$or.some((entry) => entry.type === 'DEPOSIT'));
+  assert.ok(match.$or.some((entry) => entry.type === 'WITHDRAWAL_REQUEST'));
   const grouped = transactions.mock.calls[0].arguments[0][1].$group;
   assert.deepEqual(grouped.priorWithdrawalCount.$sum.$cond[0].$and[1],
     { $in: ['$status', ['PENDING', 'COMPLETED']] });

@@ -30,6 +30,14 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    principalAtSubmission: {
+      type: Number,
+      default: null,
+    },
+    originalSubmittedAmount: Number,
+    depositCorrectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    depositCorrectedAt: Date,
+    depositCorrectionReason: { type: String, maxlength: 300 },
     netAmount: {
       type: Number,
       default: 0, // Amount received after deducting 20% platform fee on withdrawals
@@ -97,6 +105,8 @@ const transactionSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+transactionSchema.index({ user: 1, type: 1, createdAt: 1, _id: 1 });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 export default Transaction;

@@ -89,6 +89,7 @@ export const submitManualDeposit = async (req, res, next) => {
       type: 'DEPOSIT',
       amount: depositAmount,
       minimumRequiredAtSubmission: minimumDeposit,
+      principalAtSubmission: wallet.mainBalance,
       txHash: normalizedTxHash,
       paymentMethod: 'TRC20',
       paymentProofUrl,
