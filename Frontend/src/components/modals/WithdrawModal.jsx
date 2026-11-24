@@ -41,6 +41,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['withdrawInfo'] });
       onShowToast(data.message || 'Withdrawal request dispatched to admin payout queue!');
       handleClose();
     },
@@ -107,7 +108,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="neon-card bg-[#0b1322] max-w-md w-full p-6 rounded-2xl relative border border-cyan-500/40 shadow-2xl">
+      <div className="neon-card bg-[#0b1322] max-w-md w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl relative border border-cyan-500/40 shadow-2xl">
         <button onClick={handleClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
           <X className="w-5 h-5" />
         </button>
@@ -130,6 +131,11 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
           </div>
         )}
 
+        {withdrawInfo && withdrawInfo.mainBalance < 300 && (
+          <div role="status" className="mb-4 p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl text-xs text-amber-200">
+            Profit is paused because your principal is below $300. Add ${(300 - withdrawInfo.mainBalance).toFixed(2)} USDT to restore the minimum and restart the 24-hour activation, or withdraw your remaining balance when eligible.
+          </div>
+        )}
         {loadingKyc || (fetchingKyc && (kycError || !kycData?.kycStatus)) ? (
           <div role="status" className="p-6 text-center text-xs text-slate-400">Loading verification status...</div>
         ) : kycError || !kycData?.kycStatus ? (
@@ -156,7 +162,7 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
             <h4 className="text-sm font-bold text-white">Withdrawal Locked</h4>
             <p className="text-xs text-slate-300 leading-relaxed">
               Your initial withdrawal period is no longer available. Accumulate at least{' '}
-              <strong className="text-amber-300">$50.00 USDT</strong> in unwithdrawn daily profit to unlock cashouts.
+              <strong className="text-amber-300">$50.00 USDT</strong> in unwithdrawn profit and referral credits. Once an eligible withdrawal of at least $50 is approved, this target will not apply again.
             </p>
             <div className="p-2 bg-slate-900 rounded-lg text-xs font-mono text-cyan-400 border border-slate-800">
               Current Unwithdrawn Profit: ${withdrawInfo?.unwithdrawnProfitCounter?.toFixed(2) || '0.00'} USDT
@@ -171,10 +177,12 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Withdrawal Amount (USDT)</label>
+              <label htmlFor="withdraw-amount" className="block text-xs font-medium text-slate-400 mb-1">Withdrawal Amount (USDT)</label>
               <input
+                id="withdraw-amount"
                 type="number"
-                min="10"
+                min="0.01"
+                step="0.01"
                 max={totalAvailable}
                 required
                 value={amount}
@@ -185,10 +193,11 @@ const WithdrawModal = ({ isOpen, onClose, onShowToast }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label htmlFor="withdraw-address" className="block text-xs font-medium text-slate-400 mb-1">
                 Your USDT TRC20 Wallet Address
               </label>
               <input
+                id="withdraw-address"
                 type="text"
                 required
                 pattern="T[1-9A-HJ-NP-Za-km-z]{33}"

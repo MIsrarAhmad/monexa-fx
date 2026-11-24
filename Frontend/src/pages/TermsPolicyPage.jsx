@@ -203,7 +203,7 @@ const TermsPolicyPage = () => {
                 </div>
                 <div className="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800">
                   <span className="font-bold text-amber-400 block mb-1">8. Eligibility</span>
-                  <span className="text-[11px] text-slate-400">Once accumulated profit reaches $50, the user becomes eligible to request a withdrawal (subject to 20% fee & verification).</span>
+                  <span className="text-[11px] text-slate-400">Once unwithdrawn profit and referral credits reach $50, a withdrawal may be requested. After an eligible request of at least $50 is approved, the $50 target does not apply again. Each request remains subject to verification and the 20% fee.</span>
                 </div>
               </div>
             </div>

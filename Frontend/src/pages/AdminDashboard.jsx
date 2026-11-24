@@ -1217,7 +1217,7 @@ const AdminDashboard = () => {
               </div>
 
               <p className="mb-4 text-xs leading-relaxed text-slate-400">
-                Deposits and referral earned are lifetime credited totals. Wallet total is principal + profit + referral after pending reservations. Requestable gross is a periodically refreshed estimate before the 20% fee: email verification (for new accounts), approved KYC and either the first 24-hour grace period (with no pending or completed request) or $50 in new profit and referral credits are required. A valid TRC20 address is also required; balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
+                Deposits and referral earned are lifetime credited totals. Wallet total is principal + profit + referral after pending reservations. Requestable gross is an estimate before the 20% fee. After an eligible withdrawal of at least $50 is approved with the $50 profit target met, that target no longer applies. Email verification for new accounts, approved KYC and a valid TRC20 address remain required. Balances and eligibility may change. The $300 shortfall uses current principal, not lifetime deposits.
               </p>
               <p className="mb-2 text-xs text-slate-500 sm:hidden">Swipe horizontally to see all financial columns.</p>
               <div className="overflow-x-auto" role="region" aria-label="User financial overview table" tabIndex={0}>
