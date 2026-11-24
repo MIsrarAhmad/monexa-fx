@@ -47,6 +47,14 @@ request number includes all earlier requests of that type, regardless of their
 current status; it is context, not a reason given by the user. Deposit
 principal at submission is recorded for new manual requests only.
 
+The admin user overview includes monthly daily-yield reporting in UTC. The
+current month's credited amount comes from recorded daily-yield transactions;
+the month-end and next three calendar months are estimates using the current
+principal-only daily rate and next scheduled credit. Estimates assume no
+balance or schedule changes, exclude referral income and withdrawal fees, and
+are not payment obligations. Missing wallets or unavailable schedules are
+reported as unavailable rather than as zero.
+
 Admins can correct a pending manual TRC20 deposit with an uploaded proof by
 supplying `correctedAmount` and `correctionReason` (10–300 characters) when
 approving. The verified amount must be positive with at most two decimals.

@@ -13,6 +13,7 @@ import { notifyUser, publishAnnouncement } from '../services/notificationService
 import { sendResolutionTransactionEmail } from '../utils/transactionEmail.js';
 import { getWithdrawalEligibility } from '../utils/withdrawalRules.js';
 import { DepositResolutionError, resolveDeposit } from '../services/depositResolution.js';
+import { getMonthlyProfitForecast } from '../utils/yieldRules.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -228,7 +229,7 @@ export const getAdminStats = async (req, res, next) => {
   }
 };
 
-const getUserFinancialTotals = async (userIds) => {
+const getUserFinancialTotals = async (userIds, currentMonthStart, now) => {
   if (!userIds.length) return new Map();
 
   const totals = await Transaction.aggregate([
@@ -266,6 +267,16 @@ const getUserFinancialTotals = async (userIds) => {
         totalProfit: {
           $sum: { $cond: [{ $eq: ['$type', 'DAILY_YIELD'] }, '$amount', 0] },
         },
+        ...(currentMonthStart ? {
+          currentMonthProfit: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$type', 'DAILY_YIELD'] },
+              { $gte: ['$createdAt', currentMonthStart] },
+              { $lte: ['$createdAt', new Date(now)] },
+            ] },
+            '$amount', 0,
+          ] } },
+        } : {}),
         totalReferralEarned: {
           $sum: {
             $cond: [
@@ -356,6 +367,9 @@ const getTransactionCounts = (totals, prefix) => ({
 // @access Private/Admin
 export const getAdminUserOverview = async (req, res, next) => {
   try {
+    const now = Date.now();
+    const date = new Date(now);
+    const currentMonthStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
     const rawPage = typeof req.query.page === 'string' ? req.query.page : '';
     const page = /^\d{1,6}$/.test(rawPage) ? Math.max(1, Number(rawPage)) : 1;
     const pageSize = 25;
@@ -379,6 +393,8 @@ export const getAdminUserOverview = async (req, res, next) => {
         mainBalance: { $ifNull: ['$wallet.mainBalance', 0] },
         profitBalance: { $ifNull: ['$wallet.profitBalance', 0] },
         referralBalance: { $ifNull: ['$wallet.referralBalance', 0] },
+        nextYieldAt: '$wallet.nextYieldAt',
+        yieldPaused: '$wallet.yieldPaused',
         unwithdrawnProfitCounter: { $ifNull: ['$wallet.unwithdrawnProfitCounter', 0] },
         hasWallet: { $ne: [{ $ifNull: ['$wallet._id', null] }, null] },
       } },
@@ -396,15 +412,14 @@ export const getAdminUserOverview = async (req, res, next) => {
         users: [
           { $skip: (page - 1) * pageSize },
           { $limit: pageSize },
-          { $project: { _id: 1, name: 1, email: 1, country: 1, createdAt: 1, emailVerified: 1, mainBalance: 1, profitBalance: 1, referralBalance: 1, status: 1, kycStatus: 1, firstDepositAt: 1, hasUsedGracePeriod: 1, unwithdrawnProfitCounter: 1, hasWallet: 1 } },
+          { $project: { _id: 1, name: 1, email: 1, country: 1, createdAt: 1, emailVerified: 1, mainBalance: 1, profitBalance: 1, referralBalance: 1, nextYieldAt: 1, yieldPaused: 1, status: 1, kycStatus: 1, firstDepositAt: 1, hasUsedGracePeriod: 1, unwithdrawnProfitCounter: 1, hasWallet: 1 } },
         ],
       } },
     ];
     const [result] = await User.aggregate(pipeline);
     const users = result.users;
-    const totalsByUser = await getUserFinancialTotals(users.map((user) => user._id));
+    const totalsByUser = await getUserFinancialTotals(users.map((user) => user._id), currentMonthStart, now);
     const total = result.count[0]?.total || 0;
-    const now = Date.now();
     res.status(200).json({
       success: true,
       data: {
@@ -431,6 +446,11 @@ export const getAdminUserOverview = async (req, res, next) => {
             depositCounts: getTransactionCounts(totals, 'deposit'),
             withdrawalCounts: getTransactionCounts(totals, 'withdrawal'),
             totalReferralEarned: totals.totalReferralEarned || 0,
+            monthlyProfit: getMonthlyProfitForecast({
+              mainBalance: user.mainBalance, hasWallet: user.hasWallet,
+              yieldPaused: user.yieldPaused, nextYieldAt: user.nextYieldAt,
+              credited: totals.currentMonthProfit || 0, now,
+            }),
             mainBalance: user.mainBalance,
             walletTotal,
             requestableGross: withdrawalEligibility === 'ELIGIBLE' ? Math.max(0, walletTotal) : 0,

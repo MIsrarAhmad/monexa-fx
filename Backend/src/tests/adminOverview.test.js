@@ -8,6 +8,7 @@ import Wallet from '../models/Wallet.js';
 import Transaction from '../models/Transaction.js';
 import { getAdminCountryCounts, getAdminStats, getAdminUserOverview } from '../controllers/adminController.js';
 import adminRoutes from '../routes/adminRoutes.js';
+import { getMonthlyProfitForecast } from '../utils/yieldRules.js';
 
 const response = () => ({
   statusCode: 200,
@@ -21,6 +22,8 @@ const invoke = async (handler, query = {}) => {
 };
 
 test('overview returns page-scoped financial totals and no sensitive user or wallet fields', async (t) => {
+  const now = Date.parse('2026-01-15T12:00:00Z');
+  t.mock.method(Date, 'now', () => now);
   const id = new mongoose.Types.ObjectId();
   const aggregate = t.mock.method(User, 'aggregate', async () => [{
     count: [{ total: 26 }],
@@ -32,7 +35,7 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
     }],
   }]);
   const transactions = t.mock.method(Transaction, 'aggregate', async () => [{
-    _id: id, totalDeposited: 500, totalWithdrawn: 120, totalReferralEarned: 75,
+    _id: id, totalDeposited: 500, totalWithdrawn: 120, totalReferralEarned: 75, currentMonthProfit: 12,
     depositCompletedCount: 2, depositPendingCount: 1, withdrawalCompletedCount: 1, withdrawalRejectedCount: 2,
   }]);
 
@@ -42,7 +45,16 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
     joinedAt: new Date('2024-01-01'), totalDeposited: 500, totalWithdrawn: 120,
     depositCounts: { pending: 1, approved: 0, completed: 2, rejected: 0 },
     withdrawalCounts: { pending: 0, approved: 0, completed: 1, rejected: 2 },
-    totalReferralEarned: 75, mainBalance: 125,
+    totalReferralEarned: 75,
+    monthlyProfit: {
+      status: 'AVAILABLE',
+      current: { month: '2026-01', credited: 12, estimatedTotal: 12 },
+      nextMonths: [
+        { month: '2026-02', estimated: 0 }, { month: '2026-03', estimated: 0 }, { month: '2026-04', estimated: 0 },
+      ],
+      nextThreeTotal: 0,
+    },
+    mainBalance: 125,
     walletTotal: 150, requestableGross: 150, withdrawalEligibility: 'ELIGIBLE',
     status: 'BELOW_THRESHOLD', remainingToMinThreshold: 175,
   }]);
@@ -62,6 +74,79 @@ test('overview returns page-scoped financial totals and no sensitive user or wal
   const grouped = transactions.mock.calls[0].arguments[0][1].$group;
   assert.deepEqual(grouped.priorWithdrawalCount.$sum.$cond[0].$and[1],
     { $in: ['$status', ['PENDING', 'COMPLETED']] });
+  assert.deepEqual(grouped.currentMonthProfit.$sum.$cond[0].$and, [
+    { $eq: ['$type', 'DAILY_YIELD'] },
+    { $gte: ['$createdAt', new Date('2026-01-01T00:00:00Z')] },
+    { $lte: ['$createdAt', new Date(now)] },
+  ]);
+});
+
+test('monthly forecast uses UTC calendar months, actual credits and the existing principal-only yield', () => {
+  const forecast = getMonthlyProfitForecast({
+    mainBalance: 300, hasWallet: true, yieldPaused: false,
+    nextYieldAt: new Date('2028-02-01T00:00:00Z'),
+    credited: 9, now: Date.parse('2028-01-31T12:00:00Z'),
+  });
+  assert.deepEqual(forecast, {
+    status: 'AVAILABLE',
+    current: { month: '2028-01', credited: 9, estimatedTotal: 9 },
+    nextMonths: [
+      { month: '2028-02', estimated: 87 },
+      { month: '2028-03', estimated: 93 },
+      { month: '2028-04', estimated: 90 },
+    ],
+    nextThreeTotal: 270,
+  });
+});
+
+test('monthly forecast handles overdue schedules, threshold and unavailable wallets without inventing earnings', () => {
+  const now = Date.parse('2026-01-31T23:30:00Z');
+  const input = {
+    mainBalance: 300, hasWallet: true, yieldPaused: false,
+    nextYieldAt: new Date('2026-01-29T23:30:00Z'), credited: 6, now,
+  };
+  const overdue = getMonthlyProfitForecast(input);
+  assert.equal(overdue.current.estimatedTotal, 9);
+  assert.deepEqual(overdue.nextMonths.map((month) => month.estimated), [84, 93, 90]);
+  const belowThreshold = getMonthlyProfitForecast({ ...input, mainBalance: 299.99, yieldPaused: true });
+  assert.equal(belowThreshold.current.estimatedTotal, 6);
+  assert.equal(belowThreshold.nextThreeTotal, 0);
+  for (const variant of [
+    { hasWallet: false }, { yieldPaused: true }, { nextYieldAt: null },
+    { mainBalance: NaN },
+  ]) {
+    const unavailable = getMonthlyProfitForecast({ ...input, ...variant });
+    assert.notEqual(unavailable.status, 'AVAILABLE');
+    assert.equal(unavailable.current.credited, 6);
+    assert.equal(unavailable.current.estimatedTotal, null);
+    assert.equal(unavailable.nextThreeTotal, null);
+  }
+});
+
+test('overview reports recorded profit separately from future estimates for each user', async (t) => {
+  const now = Date.parse('2026-01-30T12:00:00Z');
+  t.mock.method(Date, 'now', () => now);
+  const id = new mongoose.Types.ObjectId();
+  t.mock.method(User, 'aggregate', async () => [{
+    count: [{ total: 1 }],
+    users: [{
+      _id: id, name: 'User', email: 'user@example.com', mainBalance: 300,
+      profitBalance: 50, referralBalance: 0, status: 'ACTIVE_QUALIFIED',
+      hasWallet: true, yieldPaused: false, nextYieldAt: new Date('2026-01-31T12:00:00Z'),
+    }],
+  }]);
+  t.mock.method(Transaction, 'aggregate', async () => [{ _id: id, currentMonthProfit: 42 }]);
+  const data = await invoke(getAdminUserOverview);
+  assert.deepEqual(data.users[0].monthlyProfit, {
+    status: 'AVAILABLE',
+    current: { month: '2026-01', credited: 42, estimatedTotal: 45 },
+    nextMonths: [
+      { month: '2026-02', estimated: 84 },
+      { month: '2026-03', estimated: 93 },
+      { month: '2026-04', estimated: 90 },
+    ],
+    nextThreeTotal: 267,
+  });
 });
 
 test('requestable gross mirrors KYC, profit target, first grace period and pending/completed requests', async (t) => {

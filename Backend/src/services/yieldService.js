@@ -4,20 +4,17 @@ import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import Referral from '../models/Referral.js';
 import {
-  DAILY_YIELD_RATE,
   REFERRAL_DIRECT_BONUS_FLAT,
   REFERRAL_DAILY_PASSIVE_USD,
   MINIMUM_INITIAL_DEPOSIT,
   WITHDRAWAL_GRACE_PERIOD_HOURS,
 } from '../config/constants.js';
 import { notifyUser } from './notificationService.js';
+import { calculateDailyYield } from '../utils/yieldRules.js';
+
+export { calculateDailyYield } from '../utils/yieldRules.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-export const calculateDailyYield = (investmentBalance) => {
-  if (investmentBalance < MINIMUM_INITIAL_DEPOSIT) return 0;
-  return Number((investmentBalance * DAILY_YIELD_RATE).toFixed(2));
-};
 
 // Check and trigger flat $50 direct referral bonuses upon completion of Grace Period 1
 export const processPendingDirectReferrals = async () => {
